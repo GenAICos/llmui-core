@@ -1,0 +1,94 @@
+# ============================================================================
+# LLMUI Core v2.0 - Python Dependencies (FastAPI Version) - CORRECTED & COMPLETE
+# ============================================================================
+# Author: François Chalut
+# Website: https://llmui.org
+# 
+# IMPORTANT: websockets installé EN PREMIER
+# ============================================================================
+
+# PRIORITÉ #1 - Communication Temps Réel
+websockets==12.0
+
+# WEB FRAMEWORK & API (FastAPI - PAS Flask!)
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+starlette==0.27.0
+
+# HTTP & NETWORKING
+httpx==0.25.2
+aiohttp==3.9.1
+requests==2.31.0
+python-multipart==0.0.6
+aiofiles==23.2.1
+
+# DATA VALIDATION & PROCESSING
+pydantic==2.5.0
+pydantic-settings==2.1.0
+python-dotenv==1.0.0
+PyYAML==6.0.1
+orjson==3.9.10
+
+# AI/ML - EMBEDDINGS & TRANSFORMERS
+sentence-transformers==2.2.2
+transformers==4.36.0
+torch>=2.0.1,<2.2.0
+torchvision>=0.15.2,<0.17.0
+huggingface-hub==0.19.4
+tokenizers==0.15.0
+accelerate==0.24.1
+safetensors==0.4.1
+
+# DATABASE & CACHING
+redis==5.0.1
+hiredis==2.2.3
+sqlalchemy==2.0.23
+alembic==1.12.1
+
+# SECURITY & CRYPTOGRAPHY
+cryptography==41.0.7
+passlib[bcrypt]==1.7.4
+PyJWT==2.8.0
+bcrypt==4.0.1
+itsdangerous==2.1.2
+
+# FILE PROCESSING
+PyPDF2==3.0.1
+python-magic==0.4.27
+chardet==5.2.0
+
+# TEMPLATING & WEB
+jinja2==3.1.2
+markupsafe==2.1.3
+
+# UTILITIES & HELPERS
+python-dateutil==2.8.2
+tqdm==4.66.1
+colorama==0.4.6
+loguru==0.7.2
+click==8.1.7
+packaging==23.2
+
+# ASYNCHRONOUS PROGRAMMING
+anyio==3.7.1
+sniffio==1.3.0
+
+# DEVELOPMENT & TESTING
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+black==23.12.0
+flake8==6.1.0
+isort==5.13.2
+mypy==1.7.1
+types-redis==4.6.0.11
+types-PyYAML==6.0.12.12
+types-requests==2.31.0.10
+
+# MONITORING
+prometheus-client==0.19.0
+
+# SYSTEM & PLATFORM
+psutil==5.9.6
+GPUtil==1.4.0

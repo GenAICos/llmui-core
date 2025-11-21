@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>LLMUI Core - Interface de Consensus</title>
+    <link rel="stylesheet" href="./variables.css">
+    <link rel="stylesheet" href="base.css">
+    <link rel="stylesheet" href="layout.css">
+    <link rel="stylesheet" href="chat.css">
+    <link rel="stylesheet" href="config.css">
+    <link rel="stylesheet" href="modal.css">
+    <link rel="stylesheet" href="fab.css">
+    <link rel="stylesheet" href="responsive-desktop.css">
+    <link rel="stylesheet" href="responsive-mobile.css">
+    <link rel="stylesheet" href="animations.css">
+    <!-- Session guard - Must be loaded first to protect the page -->
+    <script src="session-guard.js"></script>
+</head>
+<body>
+    <!-- Modal Overlay -->
+    <div class="modal-overlay" id="modalOverlay"></div>
+
+    <!-- Info Modal -->
+    <div class="info-modal" id="infoModal">
+        <button class="modal-close" id="modalClose">×</button>
+        <h2 data-i18n="info_modal_title">📋 Fonctionnalités LLMUI Core</h2>
+        <div class="info-content">
+            <p><strong data-i18n="info_description">Interface de consensus multi-modèles</strong></p>
+            <ul>
+                <li><strong>Mode Simple</strong> : <span data-i18n="info_feature_simple_mode">Conversation directe avec un modèle unique</span></li>
+                <li><strong>Mode Consensus</strong> : <span data-i18n="info_feature_consensus_mode">Plusieurs modèles analysent votre requête</span></li>
+                <li><strong>Multi-fichiers</strong> : <span data-i18n="info_feature_multifiles">Support de plusieurs fichiers simultanément</span></li>
+                <li><strong>Tri alphabétique</strong> : <span data-i18n="info_feature_sort">Modèles organisés pour faciliter la sélection</span></li>
+                <li><strong>Édition en ligne</strong> : <span data-i18n="info_feature_edit">Modifiez votre dernier prompt directement</span></li>
+                <li><strong>Thème clair/sombre</strong> : <span data-i18n="info_feature_theme">Interface adaptative</span></li>
+                <li><strong>Mémoire de session</strong> : <span data-i18n="info_feature_memory">Conservation du contexte conversationnel</span></li>
+                <li data-i18n="info_feature_auth">🔐 Authentification : Connexion sécurisée et gestion des sessions</li>
+            </ul>
+            
+            <p><strong data-i18n="info_formats_supported">Formats supportés :</strong></p>
+            <ul>
+                <li data-i18n="info_formats_text">Fichiers texte (.txt, .md)</li>
+                <li data-i18n="info_formats_code">Code source (.py, .js, .json, .sh, .css, .html, .xml, .yaml, .yml, .sh)</li>
+                <li data-i18n="info_formats_data">Données (.csv)</li>
+                <li data-i18n="info_formats_office">Bureautique (.docx, .xlsx, .pdf)</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-icon">L</div>
+                    <div class="logo-text">LLMUI Core</div>
+                </div>
+                <div class="header-controls">
+                    <!-- Bouton de changement de langue -->
+                    <button class="lang-toggle" id="langToggle" data-i18n-title="toggle_language" title="Changer de langue">
+                        <span id="langFlag">🇫🇷</span>
+                        <span id="langText">FR</span>
+                    </button>
+                    <!-- Logout button will be inserted here by session-guard.js -->
+                    <button class="theme-toggle" id="themeToggle" data-i18n-title="toggle_theme" title="Basculer le thème">🌙</button>
+                    <div class="status-indicator">
+                        <div class="status-dot"></div>
+                        <span id="statusText" data-i18n="system_active">Système Actif</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main content -->
+        <main class="main-content" id="mainContent">
+            <!-- Chat panel -->
+            <div class="chat-panel fade-in" id="chatPanel">
+                <div class="chat-header">
+                    <div class="chat-header-content">
+                        <div>
+                            <h2 class="chat-title" data-i18n="chat_title">Interface de Consensus</h2>
+                            <p class="chat-subtitle" data-i18n="chat_subtitle">Interagissez avec le collectif d'IA</p>
+                        </div>
+                        <button class="new-conversation-btn" id="newConversationBtn" data-i18n-title="new_conversation" title="Effacé la conversation">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                              <path d="M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="messages-container" id="messagesContainer">
+                    <div class="message llmui">
+                        <div class="message-content">
+                            <span class="welcome-message-text" data-i18n="welcome_message">Bienvenue dans LLMUI Core ! Je suis prêt à traiter vos requêtes.</span>
+                            <div class="consensus-info">
+                                🤖 <span data-i18n="welcome_system">Système initialisé</span><br>
+                                📊 <span id="welcomeModelsCount">0</span> <span data-i18n="welcome_models">modèles disponibles</span><br>
+                                ⚡ <span data-i18n="welcome_ready">Prêt pour le consensus</span><br>
+                                🔐 <span data-i18n="welcome_authenticated">Session authentifiée</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Status bar avec boutons intégrés -->
+                <div class="status-bar">
+                    <div class="status-bar-left">
+                        <span class="status-icon">⏱</span>
+                        <span id="statusMessage" data-i18n="system_ready">Système prêt</span>
+                    </div>
+                    <div class="status-bar-right">
+                        <a href="index.html" target="_blank" styles="rel="noopener noreferrer" 
+                           class="status-bar-btn info-btn" title="Nouvelle conversation">
+                            <span data-i18n="nouvelleConversation">Nouvelle conversation</span>
+                        </a>
+                        <!-- Bouton Informations avec icône -->
+                        <button class="status-bar-btn info-btn" id="fabInfo" title="Informations">
+                            <span data-i18n="info_btn">Informations</span>
+                        </button>
+                        
+                        <!-- Bouton Toggle Panel avec flèche animée -->
+                        <button class="status-bar-btn toggle-btn" id="fabTogglePanel" title="Fermer le panneau">
+                            <svg class="panel-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="15 18 9 12 15 6"/>
+                            </svg>
+                            <span class="panel-text" data-i18n="close_panel">Fermer le panneau ▶</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="chat-input">
+                    <!-- File upload -->
+                    <div class="file-upload-area">
+                        <input type="file" class="file-input" id="fileInput" accept=".txt,.md,.py,.js,.json,.csv,.sh,.css,.html,.xml,.yaml,.yml,.docx,.xlsx,.pdf,.jpg,.jpeg,.png,.sh" multiple>
+                        <button class="file-upload-btn" id="fileUploadBtn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14,2 14,8 20,8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                            <polyline points="10,9 9,9 8,9"/>
+                        </svg>
+                        <span data-i18n="files_button">Fichiers</span>
+                    </button>
+                        <span class="file-info" id="fileInfo"></span>
+                    </div>
+                    
+                    <div class="file-chips-container" id="fileChipsContainer"></div>
+                    
+                    <div class="input-container">
+                        <textarea 
+                            class="prompt-input" 
+                            id="promptInput" 
+                            data-i18n-placeholder="enter_message"
+                            placeholder="Posez votre question au collectif... (Shift+Entrée pour nouvelle ligne)"
+                            rows="1"
+                            maxlength="50000"
+                        ></textarea>
+                        <button class="send-button" id="sendButton">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuration panel -->
+            <div class="config-panel fade-in" id="configPanel">
+                <!-- Mode selector -->
+                <div class="mode-selector">
+                    <button class="mode-btn active" id="modeSimple">
+                        <span>💬</span>
+                        <span data-i18n="mode_simple">Simple</span>
+                    </button>
+                    <button class="mode-btn" id="modeConsensus">
+                        <span>👥</span>
+                        <span data-i18n="mode_consensus">Consensus</span>
+                    </button>
+                </div>
+
+                <!-- Timeout selector -->
+                <div class="timeout-selector config-card fade-in">
+                    <h3 class="card-title">
+                        <span class="card-icon">⏱️</span>
+                        <span data-i18n="timeout_level">Niveau de Timeout</span>
+                    </h3>
+                    <select id="timeoutSelect">
+                        <option value="low" data-i18n="timeout_low">⚡ Bas (15 min)</option>
+                        <option value="medium" selected data-i18n="timeout_medium">⏱️ Moyen (1h)</option>
+                        <option value="high" data-i18n="timeout_high">⏰ Haut (4h)</option>
+                        <option value="very_high" data-i18n="timeout_very_high">🕐 Très Haut (12h)</option>
+                    </select>
+                    <div id="timeoutInfo" class="timeout-info"></div>
+                </div>
+
+                <!-- Simple model -->
+                <div class="config-card fade-in" id="simpleModelCard">
+                    <h3 class="card-title">
+                        <span class="card-icon">🤖</span>
+                        <span>Modèle Simple</span>
+                    </h3>
+                    <select id="simpleModelSelect">
+                        <option value="" data-i18n="loading_models">Chargement...</option>
+                    </select>
+                </div>
+
+                <!-- Workers -->
+                <div class="config-card fade-in" id="workerModelsCard" style="display: none;">
+                    <h3 class="card-title">
+                        <span class="card-icon">🤖</span>
+                        <span>Modèles Workers</span>
+                    </h3>
+                    <div class="model-grid" id="workerModels"></div>
+                    <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(6, 182, 212, 0.1); border-left: 3px solid #06b6d4; border-radius: 8px; font-size: 0.8rem;">
+                        💡 Sélectionnez 2-5 modèles pour le consensus
+                    </div>
+                </div>
+
+                <!-- Merger -->
+                <div class="config-card fade-in" id="mergerCard" style="display: none;">
+                    <h3 class="card-title">
+                        <span class="card-icon">🧠</span>
+                        <span>Modèle Merger</span>
+                    </h3>
+                    <select id="mergerSelect">
+                        <option value="" data-i18n="loading_models">Chargement...</option>
+                    </select>
+                </div>
+
+                <!-- Stats -->
+                <div class="config-card fade-in">
+                    <h3 class="card-title">
+                        <span class="card-icon">📊</span>
+                        <span data-i18n="stats_title">Statistiques</span>
+                    </h3>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-value" id="modelsCount">0</div>
+                            <div class="stat-label" data-i18n="models_label">Modèles</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="totalRequests">0</div>
+                            <div class="stat-label" data-i18n="requests_label">Requêtes</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="successRate">100%</div>
+                            <div class="stat-label" data-i18n="consensus_label">Consensus</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="avgTime">0.0s</div>
+                            <div class="stat-label" data-i18n="avg_time_label">Temps Moy.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Main app scripts - Loads after session verification -->
+    <script src="i18n.js"></script>
+    <script src="utils.js"></script>
+    <script src="app.js"></script>
+    <script src="dialog-system.js"></script>
+    <script src="ui.js"></script>
+    <script src="main.js"></script>
+    <script src="fallback.js"></script>
+</body>
+</html>

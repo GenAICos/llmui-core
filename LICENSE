@@ -1,0 +1,383 @@
+# Licence LLMUI Core v2.0
+
+## GNU Affero General Public License v3.0 avec Commons Clause
+
+---
+
+## Commons Clause - Restriction d'utilisation commerciale
+
+**"Commons Clause" License Condition v1.0**
+
+Le logiciel est fourni sous la licence GNU AGPL v3.0 avec la restriction supplémentaire suivante:
+
+Sans autorisation écrite préalable de François Chalut, vous ne pouvez **PAS**:
+
+1. **Vendre** le logiciel ou ses composants
+2. **Offrir le logiciel comme service commercial** (Software-as-a-Service / SaaS)
+3. **Utiliser le logiciel dans un produit commercial** que vous vendez
+4. **Facturer des frais** pour l'hébergement ou l'utilisation du logiciel
+5. **Créer un service commercial** basé sur ce logiciel
+6. **Générer des revenus directs ou indirects** à partir de ce logiciel
+
+**En résumé**: Vous pouvez utiliser, modifier et redistribuer le logiciel **GRATUITEMENT**, mais vous ne pouvez **PAS en tirer profit financièrement**.
+
+---
+
+## GNU AFFERO GENERAL PUBLIC LICENSE
+
+**Version 3, 19 November 2007**
+
+Copyright © 2025 François Chalut  
+La Tuque, Québec, Canada
+
+Ce programme est un logiciel libre; vous pouvez le redistribuer ou le modifier suivant les termes de la **GNU Affero General Public License** telle que publiée par la Free Software Foundation; soit la **version 3** de la licence, soit (à votre gré) toute version ultérieure.
+
+### TERMES ET CONDITIONS
+
+#### 0. Définitions
+
+"**Ce programme**" ou "**le logiciel**" désigne LLMUI Core dans son intégralité, incluant le code source, la documentation, et tous les fichiers associés.
+
+"**Modifier**" un travail signifie copier ou adapter tout ou partie du travail d'une façon qui nécessite une permission de copyright, autre que la réalisation d'une copie exacte.
+
+"**Propager**" un travail signifie faire quoi que ce soit avec celui-ci qui, sans permission, vous rendrait directement ou secondairement responsable d'infraction suivant la loi de copyright applicable.
+
+"**Transmettre**" un travail signifie tout type de propagation qui permet à d'autres parties de faire ou recevoir des copies.
+
+#### 1. Code source
+
+Le "**code source**" d'un travail désigne la forme préférée du travail pour y effectuer des modifications. 
+
+Vous devez clairement identifier toutes les modifications que vous apportez au code source et dater chaque modification.
+
+#### 2. Copyleft
+
+Quand vous redistribuez le logiciel (modifié ou non), vous devez:
+
+1. **Fournir le code source complet** sous cette même licence
+2. **Inclure cette licence** dans toutes les copies
+3. **Documenter toutes les modifications** apportées
+4. **Préserver les mentions de copyright** originales
+5. **Inclure un fichier NOTICE** détaillant vos modifications
+
+#### 3. Clause réseau (AGPL) - OBLIGATION DE PUBLICATION
+
+**IMPORTANT**: Si vous exécutez une version modifiée de ce logiciel sur un serveur et permettez à des utilisateurs d'interagir avec celui-ci à distance via un réseau informatique, vous devez leur donner accès au **code source complet** de votre version modifiée.
+
+Cela inclut:
+- Les installations web / SaaS
+- Les API publiques basées sur ce logiciel
+- Les services cloud utilisant ce logiciel
+- Toute interaction réseau avec des utilisateurs
+
+#### 3.1. Clause spéciale entreprise - PUBLICATION OBLIGATOIRE
+
+**CLAUSE ADDITIONNELLE POUR LES ENTREPRISES**:
+
+Toute **entreprise, organisation commerciale, ou entité juridique** qui modifie ce logiciel **DOIT**:
+
+1. **PUBLIER** le code source complet de leurs modifications sur un dépôt public (GitHub, GitLab, etc.)
+2. **PUBLIER** dans les **30 jours** suivant la première utilisation interne ou externe
+3. **MAINTENIR** le dépôt public accessible pendant toute la durée d'utilisation
+4. **DOCUMENTER** toutes les modifications apportées
+5. **CRÉDITER** François Chalut comme auteur original
+6. **UTILISER** la même licence (AGPL v3 + Commons Clause)
+
+Cette obligation s'applique même si:
+- ❌ L'entreprise utilise le logiciel uniquement en interne
+- ❌ L'entreprise ne distribue pas le logiciel
+- ❌ L'entreprise n'offre pas de service réseau
+- ❌ Les modifications sont mineures
+
+**DÉFINITION D'ENTREPRISE**: Toute entité ayant:
+- Plus de 5 employés, OU
+- Un chiffre d'affaires annuel, OU
+- Une structure commerciale (SARL, SA, Inc., LLC, etc.)
+
+**EXEMPTIONS**: Les particuliers, étudiants, chercheurs académiques, et organisations à but non lucratif (associations, fondations) ne sont PAS soumis à cette obligation de publication immédiate, mais doivent quand même partager leur code s'ils le distribuent ou l'utilisent via réseau.
+
+**SANCTIONS EN CAS DE NON-RESPECT**:
+- Révocation immédiate et permanente de la licence
+- Obligation de cesser toute utilisation
+- Dommages et intérêts selon les lois applicables
+- Publication de la violation
+
+#### 4. Restrictions additionnelles (Commons Clause)
+
+En plus des termes de l'AGPL v3, les restrictions suivantes s'appliquent:
+
+**INTERDICTIONS COMMERCIALES**:
+
+Vous ne pouvez PAS:
+
+1. **Vendre** ce logiciel ou ses composants
+2. **Offrir comme service payant** (SaaS, hébergement payant, etc.)
+3. **Inclure dans un produit commercial** que vous vendez
+4. **Facturer pour l'installation, la configuration ou le support**
+5. **Utiliser dans un environnement commercial** pour générer des revenus
+6. **Créer un produit dérivé commercial**
+7. **Offrir du consulting payant** basé principalement sur ce logiciel
+
+**UTILISATIONS AUTORISÉES**:
+
+Vous POUVEZ:
+
+1. ✅ **Utiliser gratuitement** à des fins personnelles ou internes
+2. ✅ **Modifier** le code pour vos besoins
+3. ✅ **Redistribuer gratuitement** (avec code source)
+4. ✅ **Contribuer** au projet original
+5. ✅ **Utiliser dans l'éducation** ou la recherche
+6. ✅ **Partager avec des collègues** gratuitement
+7. ✅ **Utiliser en entreprise** pour usage interne (sans revente)
+8. ✅ **Créer des œuvres dérivées** non commerciales
+
+#### 5. Garanties
+
+CE LOGICIEL EST FOURNI "TEL QUEL", SANS GARANTIE D'AUCUNE SORTE.
+
+François Chalut ne garantit pas:
+- Que le logiciel fonctionnera sans interruption
+- Qu'il sera exempt d'erreurs
+- Qu'il répondra à vos besoins spécifiques
+- Qu'il sera compatible avec votre environnement
+
+#### 6. Limitation de responsabilité
+
+EN AUCUN CAS François Chalut NE SERA RESPONSABLE DE:
+
+- Pertes de données
+- Interruptions de service  
+- Dommages directs, indirects, accessoires ou consécutifs
+- Pertes de profits
+- Perte d'opportunités commerciales
+
+MÊME SI AVERTI DE LA POSSIBILITÉ DE TELS DOMMAGES.
+
+#### 7. Contributions
+
+Toute contribution au projet (pull requests, patches, etc.) sera:
+
+1. **Automatiquement sous cette même licence** (AGPL v3 + Commons Clause)
+2. **Attribuée à François Chalut** comme maintainer principal
+3. **Documentée** dans le fichier CONTRIBUTORS.md
+
+Les contributeurs conservent le crédit pour leur travail mais acceptent les termes de cette licence.
+
+#### 8. Marques commerciales
+
+Les noms et marques suivants sont protégés:
+
+- **LLMUI Core**
+- **Andy** (Assistant DevOps)
+- **AnimaOS**
+- **Génie IA**
+
+Leur utilisation nécessite une autorisation préalable.
+
+#### 9. Brevets
+
+Si vous initiez une procédure judiciaire en brevets contre quiconque en alléguant que ce logiciel constitue une infraction directe ou contributive de brevet, alors toutes les licences qui vous ont été accordées pour ce logiciel se terminent à la date du dépôt de cette procédure.
+
+#### 10. Conformité à l'export
+
+Vous êtes responsable du respect de toutes les lois sur le contrôle des exportations applicables.
+
+#### 11. Versions futures de la licence
+
+François Chalut se réserve le droit de publier des versions révisées de cette licence. Chaque version recevra un numéro de version distinct.
+
+Vous pouvez choisir de suivre les termes de la version sous laquelle vous avez reçu le programme ou de toute version ultérieure publiée.
+
+#### 12. Juridiction
+
+Cette licence est régie par les lois de la **Province de Québec, Canada**.
+
+Tout litige sera soumis à la juridiction exclusive des tribunaux du **district judiciaire de Québec**.
+
+---
+
+## Comment obtenir une licence commerciale
+
+Si vous souhaitez utiliser LLMUI Core commercialement (vente, SaaS, produit commercial), contactez-nous pour obtenir une licence commerciale:
+
+**François Chalut**
+
+- **Email**: contact@llmui.org
+- **Site web**: https://llmui.org  
+- **Téléphone**: +1 (514) 443-2003
+- **Adresse**: 466 rue Saint-Eugène, La Tuque, Québec, Canada, G9X 2T4
+
+Nous proposons des licences commerciales flexibles adaptées à votre usage.
+
+---
+
+## Résumé en français simple
+
+### ✅ Ce que vous POUVEZ faire:
+
+- Télécharger et utiliser gratuitement
+- Voir et étudier le code source
+- Modifier le code pour vos besoins
+- Partager vos modifications (avec le code source)
+- Utiliser dans votre entreprise (usage interne - MAIS voir ci-dessous)
+- Contribuer au projet
+- Créer des projets dérivés non commerciaux
+
+### ⚠️ IMPORTANT - CLAUSE SPÉCIALE ENTREPRISES:
+
+**Si vous êtes une ENTREPRISE (>5 employés OU revenus commerciaux) et que vous modifiez ce logiciel, vous DEVEZ:**
+
+1. 📢 **PUBLIER votre code modifié** sur un dépôt public (GitHub/GitLab)
+2. ⏱️ **Dans les 30 jours** de la première utilisation
+3. 📝 **Documenter vos modifications**
+4. 🔓 **Garder le dépôt public** pendant toute la durée d'utilisation
+
+**Cela s'applique MÊME pour un usage interne!**
+
+**Exemptions**: Particuliers, étudiants, chercheurs, et OBNL ne sont pas soumis à cette publication immédiate.
+
+### ❌ Ce que vous NE POUVEZ PAS faire:
+
+- Vendre le logiciel
+- Offrir comme service payant (SaaS)
+- Créer un produit commercial avec
+- Facturer pour l'hébergement
+- Générer des revenus directs ou indirects
+- Garder vos modifications privées (si vous distribuez)
+- **[ENTREPRISES]** Garder vos modifications privées (même en interne)
+
+### 🤝 Clause réseau (AGPL):
+
+Si vous utilisez ce logiciel sur un serveur accessible par réseau, vous DEVEZ publier votre code source modifié.
+
+---
+
+## Pourquoi cette licence?
+
+Cette combinaison **AGPL v3 + Commons Clause** assure:
+
+1. 🔓 **Open Source** - Le code reste accessible à tous
+2. 🚫 **Pas de profit** - Personne ne peut gagner de l'argent avec mon travail
+3. 📖 **Transparence** - Toutes les modifications doivent être partagées
+4. 🌐 **Clause réseau** - Les SaaS doivent partager leur code
+5. 🇨🇦 **Protection juridique** - Lois canadiennes et québécoises
+6. 🤝 **Collaboration** - Les contributions restent libres
+
+---
+
+## Texte complet de l'AGPL v3
+
+Pour le texte juridique complet de la GNU Affero General Public License v3.0, consultez:
+
+**https://www.gnu.org/licenses/agpl-3.0.txt**
+
+Ou le fichier `AGPL-3.0-LICENSE.txt` inclus dans ce projet.
+
+---
+
+## Changements par rapport à une licence propriétaire
+
+| Aspect | Propriétaire | AGPL v3 + Commons Clause |
+|--------|--------------|--------------------------|
+| **Voir le code** | ❌ Non | ✅ Oui |
+| **Modifier** | ❌ Non | ✅ Oui (mais partager) |
+| **Redistribuer** | ❌ Non | ✅ Oui (avec source) |
+| **Usage commercial** | ❌ Non sans licence | ❌ Non sans licence |
+| **SaaS** | ❌ Non sans licence | ❌ Non sans licence |
+| **Usage personnel** | ⚠️ Limité | ✅ Libre |
+| **Contributions** | ⚠️ Propriété de l'auteur | ✅ Communauté |
+
+---
+
+## Questions fréquentes (FAQ)
+
+### Q: Puis-je utiliser LLMUI Core dans mon entreprise?
+**R**: Oui, pour un usage interne non commercial (pas de revente). **MAIS** si vous êtes une entreprise et que vous modifiez le code, vous DEVEZ publier vos modifications sur un dépôt public dans les 30 jours.
+
+### Q: Je suis une entreprise, pourquoi dois-je publier mes modifications?
+**R**: Cette clause assure que les grandes entreprises ne peuvent pas s'approprier le projet sans contribuer à la communauté. Cela maintient l'écosystème open source équitable et transparent.
+
+### Q: Qu'est-ce qui définit une "entreprise"?
+**R**: Une entité avec plus de 5 employés OU qui génère des revenus OU qui a une structure commerciale (Inc., SARL, etc.). Les particuliers, étudiants et OBNL sont exemptés.
+
+### Q: Je suis un freelance/consultant, suis-je une entreprise?
+**R**: Si vous travaillez seul (< 5 employés), vous n'êtes PAS soumis à la publication obligatoire. Si vous êtes incorporé avec des employés, oui.
+
+### Q: Où dois-je publier mes modifications?
+**R**: Sur un dépôt Git public comme GitHub, GitLab, ou Codeberg. Le dépôt doit être accessible publiquement et maintenu pendant votre utilisation du logiciel.
+
+### Q: Puis-je modifier le code?
+**R**: Oui, mais vous devez partager vos modifications si vous redistribuez OU si vous êtes une entreprise.
+
+### Q: Puis-je créer un SaaS avec?
+**R**: Non, sauf avec une licence commerciale payante.
+
+### Q: Puis-je vendre du support technique?
+**R**: Non, sauf avec une licence commerciale payante.
+
+### Q: Puis-je l'utiliser pour apprendre?
+**R**: Oui, absolument et gratuitement!
+
+### Q: Puis-je contribuer au projet?
+**R**: Oui, les contributions sont bienvenues!
+
+### Q: Que se passe-t-il si je viole la licence?
+**R**: Vous perdez immédiatement tous vos droits d'utilisation et pouvez faire face à des poursuites.
+
+### Q: Comment obtenir une licence commerciale?
+**R**: Contactez contact@llmui.org pour discuter de vos besoins spécifiques.
+
+---
+
+## Historique des versions
+
+- **v2.0.0** (2025-11-21): Passage à AGPL v3 + Commons Clause
+- **v1.0.0** (2024): Licence propriétaire initiale
+
+---
+
+## Remerciements
+
+Merci à la communauté open source et aux projets qui ont inspiré LLMUI Core:
+
+- Ollama - Serveur LLM local
+- FastAPI - Framework web Python
+- La communauté AGPL pour la protection du libre
+
+---
+
+## Déclaration de l'auteur
+
+> *"Je crois en l'open source et le partage des connaissances. Mais je crois aussi que le travail intellectuel a de la valeur et que les grandes entreprises ne devraient pas pouvoir exploiter gratuitement le travail de développeurs individuels. Cette licence permet à tous d'apprendre et d'utiliser LLMUI Core gratuitement, tout en protégeant contre l'exploitation commerciale."*
+>
+> — François Chalut, créateur de LLMUI Core
+
+---
+
+## Contact et licence commerciale
+
+Pour toute question sur cette licence ou pour obtenir une licence commerciale:
+
+**François Chalut**  
+Créateur et mainteneur de LLMUI Core
+
+📧 Email: contact@llmui.org  
+🌐 Web: https://llmui.org  
+📱 Téléphone: +1 (514) 443-2003  
+📍 Adresse: 466 rue Saint-Eugène, La Tuque, Québec, G9X 2T4, Canada
+
+---
+
+**© 2025 François Chalut**  
+**Tous droits réservés sur les marques et le nom commercial**
+
+**Licence**: GNU Affero General Public License v3.0 avec Commons Clause  
+**Juridiction**: Québec, Canada
+
+*Pour la souveraineté numérique du Québec* 🇨🇦
+
+---
+
+**EN UTILISANT CE LOGICIEL, VOUS ACCEPTEZ LES TERMES DE CETTE LICENCE.**
+
+**SI VOUS N'ACCEPTEZ PAS CES TERMES, N'UTILISEZ PAS CE LOGICIEL.**

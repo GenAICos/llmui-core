@@ -1,0 +1,304 @@
+# LLMUI Core v2.0 - Configuration File
+# Author: François Chalut
+# Website: https://llmui.org
+#
+# Place this file at: /opt/llmui-core/config.yaml
+# Load with: python -c "import yaml; config = yaml.safe_load(open('config.yaml'))"
+
+# ============================================================================
+# SERVER CONFIGURATION
+# ============================================================================
+server:
+  # Backend API server
+  backend:
+    host: "127.0.0.1"  # Bind to localhost only for security
+    port: 5000
+    workers: 4  # Number of uvicorn workers
+    reload: false  # Set to true for development only
+    log_level: "info"  # debug, info, warning, error, critical
+  
+  # Proxy server
+  proxy:
+    host: "0.0.0.0"  # Public access
+    port: 8000
+    port_ssl: 8443
+    enable_ssl: false  # Set to true to enable HTTPS
+  
+  # Timeouts (seconds)
+  timeouts:
+    consensus: 1800  # 30 minutes
+    simple_small: 180  # 3 minutes
+    simple_medium: 300  # 5 minutes
+    simple_large: 600  # 10 minutes
+    simple_huge: 1200  # 20 minutes
+    health_check: 20
+    models_fetch: 20
+
+# ============================================================================
+# SECURITY CONFIGURATION
+# ============================================================================
+security:
+  # Authentication (to be implemented)
+  auth:
+    enabled: false  # Set to true to enable authentication
+    method: "jwt"  # jwt, oauth2, basic
+    secret_key: "CHANGE_THIS_SECRET_KEY"  # IMPORTANT: Change in production!
+    token_expiry_hours: 24
+  
+  # Rate Limiting
+  rate_limit:
+    enabled: false  # Set to true to enable rate limiting
+    requests_per_minute: 10
+    requests_per_hour: 100
+    requests_per_day: 1000
+  
+  # File Upload Limits
+  file_upload:
+    max_file_size_mb: 10  # Maximum size per file
+    max_total_size_mb: 20  # Maximum total size all files
+    allowed_extensions:
+      - ".txt"
+      - ".md"
+      - ".py"
+      - ".js"
+      - ".json"
+      - ".csv"
+      - ".log"
+    blocked_extensions:
+      - ".exe"
+      - ".sh"
+      - ".bat"
+      - ".dll"
+  
+  # Session Management
+  session:
+    timeout_hours: 24
+    secure_cookie: true  # Set to false for HTTP
+    http_only: true
+    same_site: "lax"  # strict, lax, none
+  
+  # CORS (Cross-Origin Resource Sharing)
+  cors:
+    enabled: true
+    allowed_origins:
+      - "http://localhost:8000"
+      - "http://localhost:8443"
+      - "https://localhost:8443"
+    allow_credentials: true
+    allow_methods:
+      - "GET"
+      - "POST"
+      - "PUT"
+      - "DELETE"
+      - "OPTIONS"
+    allow_headers:
+      - "Content-Type"
+      - "Authorization"
+      - "X-Requested-With"
+      - "X-Session-Id"
+
+# ============================================================================
+# DATABASE CONFIGURATION
+# ============================================================================
+database:
+  # SQLite settings
+  path: "/var/lib/llmui/llmui.db"
+  backup_enabled: true
+  backup_interval_hours: 24
+  backup_path: "/var/lib/llmui/backups"
+  max_backups: 7  # Keep last 7 backups
+  
+  # Connection settings
+  timeout: 30
+  check_same_thread: false
+
+# ============================================================================
+# LOGGING CONFIGURATION
+# ============================================================================
+logging:
+  # Log levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  level: "INFO"
+  
+  # Paths
+  directory: "/var/log/llmui"
+  
+  # Files
+  backend_log: "backend.log"
+  backend_error: "backend-error.log"
+  proxy_log: "proxy.log"
+  proxy_error: "proxy-error.log"
+  security_log: "security.log"
+  
+  # Rotation
+  max_size_mb: 100
+  backup_count: 10
+  
+  # Format
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  date_format: "%Y-%m-%d %H:%M:%S"
+
+# ============================================================================
+# OLLAMA CONFIGURATION
+# ============================================================================
+ollama:
+  # Ollama server URLs
+  urls:
+    - "http://localhost:11434"
+    # Add more Ollama instances for load balancing
+    # - "http://ollama-server-2:11434"
+  
+  # Default models
+  defaults:
+    worker_models:
+      - "granite3.1:2b"
+      - "qwen2.5:3b"
+      - "phi3:3.8b"
+    merger_model: "mistral:7b"
+    simple_model: "qwen2.5:3b"
+  
+  # Recommended models
+  recommended:
+    workers:
+      - "phi3:3.8b"
+      - "granite3.1:2b"
+      - "qwen2.5:3b"
+      - "mistral:7b"
+    mergers:
+      - "qwen2.5:8b"
+      - "qwen2.5:14b"
+      - "phi3:14b"
+    simple:
+      - "qwen2.5:8b"
+      - "phi3:14b"
+      - "mistral:7b"
+  
+  # Models that don't support files
+  no_file_support:
+    - "granite3.1:2b"
+    - "gemma2:270m"
+    - "gemma:2b"
+    - "gemma:7b"
+    - "tinyllama:1.1b"
+  
+  # Connection settings
+  timeout: 900  # 15 minutes
+  retry_attempts: 3
+  retry_delay: 1  # seconds
+
+# ============================================================================
+# MEMORY SYSTEM CONFIGURATION
+# ============================================================================
+memory:
+  # Hybrid memory settings
+  max_recent_messages: 5
+  max_summary_messages: 10
+  compression_threshold: 10
+  max_context_tokens: 3000
+  
+  # Session cleanup
+  cleanup_enabled: true
+  cleanup_interval_hours: 24
+  session_expiry_hours: 168  # 7 days
+
+# ============================================================================
+# CONSENSUS MODE CONFIGURATION
+# ============================================================================
+consensus:
+  enabled: true
+  enable_double_pass: true
+  consensus_threshold: 0.50
+  show_detailed_process: true
+  max_workers: 5
+  min_workers: 2
+
+# ============================================================================
+# TEMPORARY FILES CONFIGURATION
+# ============================================================================
+temp_files:
+  directory: "/tmp/llmui_generated_files"
+  
+  # Cleanup settings
+  cleanup_enabled: true
+  cleanup_interval_hours: 1
+  max_age_hours: 24
+  max_storage_mb: 500
+  
+  # MIME types
+  allowed_mime_types:
+    - "text/plain"
+    - "text/x-python"
+    - "text/javascript"
+    - "application/json"
+    - "text/html"
+    - "text/css"
+
+# ============================================================================
+# SSL/TLS CONFIGURATION
+# ============================================================================
+ssl:
+  enabled: false  # Set to true to enable HTTPS
+  cert_file: "/opt/llmui-core/ssl/llmui.crt"
+  key_file: "/opt/llmui-core/ssl/llmui.key"
+  
+  # SSL settings
+  verify_mode: "CERT_NONE"  # CERT_NONE, CERT_OPTIONAL, CERT_REQUIRED
+  ssl_version: "TLSv1_2"  # TLSv1_2, TLSv1_3
+
+# ============================================================================
+# MONITORING & STATISTICS
+# ============================================================================
+monitoring:
+  enabled: true
+  
+  # Statistics collection
+  stats:
+    enabled: true
+    retention_days: 30
+  
+  # Health checks
+  health_check:
+    enabled: true
+    interval_seconds: 60
+  
+  # Metrics
+  metrics:
+    enabled: false  # Set to true to enable Prometheus metrics
+    port: 9090
+
+# ============================================================================
+# FEATURES FLAGS
+# ============================================================================
+features:
+  consensus_mode: true
+  simple_mode: true
+  file_upload: true
+  memory_system: true
+  generated_files_download: true
+  session_analytics: true
+
+# ============================================================================
+# DEVELOPMENT SETTINGS (Disable in Production!)
+# ============================================================================
+development:
+  debug_mode: false  # NEVER enable in production!
+  auto_reload: false
+  verbose_errors: false
+  allow_all_origins: false  # SECURITY RISK!
+  disable_auth: false  # SECURITY RISK!
+
+# ============================================================================
+# MAINTENANCE
+# ============================================================================
+maintenance:
+  # Maintenance mode
+  enabled: false
+  message: "System under maintenance. Please try again later."
+  
+  # Backup schedule
+  backup:
+    enabled: true
+    schedule: "0 2 * * *"  # Cron format: 2 AM daily
+    
+  # Update check
+  check_updates: true
+  update_channel: "stable"  # stable, beta, nightly
