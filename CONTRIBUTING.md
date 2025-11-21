@@ -130,10 +130,10 @@ def process(u,d):
 ==============================================================================
 Nom du fichier - Courte description
 ==============================================================================
-Auteur: Génie IA Centre Opérationnel Sécurité inc.
+Auteur: Francois Chalut
 Date: YYYY-MM-DD
 Version: X.Y.Z
-Licence: Propriétaire
+Licence: AGPLv3 + common clause
 ==============================================================================
 Description détaillée du module/script
 ==============================================================================
