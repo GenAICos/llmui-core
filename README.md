@@ -77,7 +77,7 @@ LLMUI Core est une plateforme innovante de consensus entre plusieurs modèles de
 
 ```bash
 # Cloner le dépôt
-git clone https://github.com/votre-repo/llmui-core.git
+git clone https://github.com/GenAICos/llmui-core.git
 cd llmui-core
 
 # Lancer l'installation interactive
