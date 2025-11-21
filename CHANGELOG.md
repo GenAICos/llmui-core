@@ -17,7 +17,7 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ---
 
-## [2.0.0] - 2025-11-21
+## [0.5.0] - 2025-11-21
 
 ### 🎉 Nouvelle version majeure
 
@@ -220,39 +220,15 @@ Cette version représente une refonte complète de LLMUI Core avec l'introductio
 - API endpoints réorganisés
 - Services systemd renommés
 
-#### Migration depuis 1.0
-
-1. Sauvegarder les données:
-   ```bash
-   cp -r /ancien/chemin/data /backup/
-   ```
-
-2. Désinstaller l'ancienne version:
-   ```bash
-   systemctl stop llmui
-   rm -rf /ancien/chemin/
-   ```
-
-3. Installer 2.0 avec Andy:
-   ```bash
-   sudo bash andy_setup.sh
-   ```
-
-4. Restaurer les données:
-   ```bash
-   cp -r /backup/data /opt/llmui-core/
-   chown -R llmui:llmui /opt/llmui-core/data
-   ```
-
 ---
 
 ## Support
 
 Pour toute question sur une version spécifique:
 
-- **Issues GitHub**: [Créer un issue](https://github.com/votre-repo/llmui-core/issues)
+- **Issues GitHub**: [Créer un issue](https://github.com/GenAICos/llmui-core/issues)
 - **Email**: support@genie-ia.ca
-- **Documentation**: [Wiki GitHub](https://github.com/votre-repo/llmui-core/wiki)
+- **Documentation**: [Wiki GitHub](https://github.com/GenAICos/llmui-core/wiki)
 
 ---
 
@@ -262,7 +238,7 @@ Voir [AUTHORS.md](AUTHORS.md) pour la liste complète des contributeurs.
 
 ### Équipe principale
 
-- **François** - Fondateur & Architecte Principal - Génie IA Centre Opérationnel Sécurité inc.
+- **François** - Fondateur & Architecte Principal
 
 ### Remerciements
 
@@ -272,6 +248,6 @@ Voir [AUTHORS.md](AUTHORS.md) pour la liste complète des contributeurs.
 
 ---
 
-**Génie IA Centre Opérationnel Sécurité inc.** - Pour la souveraineté numérique du Québec 🇨🇦
+**Francois Chalut** - Pour la souveraineté numérique du Québec 🇨🇦
 
 *Dernière mise à jour: 2025-11-21*
