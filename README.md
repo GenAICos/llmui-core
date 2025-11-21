@@ -8,7 +8,7 @@
 
 > **Plateforme de consensus multi-modèles IA avec souveraineté numérique**
 
-Développé par **Génie IA Centre Opérationnel Sécurité inc.** - Une solution québécoise pour l'intelligence artificielle locale et éthique.
+Développé par **Francois Chalut** - Une solution québécoise pour l'intelligence artificielle locale et éthique.
 
 ---
 
