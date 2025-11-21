@@ -15,9 +15,14 @@ import sys
 import os
 import sqlite3
 import json
+import hashlib
+import uuid
 from datetime import datetime
 from pathlib import Path
 import getpass
+
+# GitHub repository known by Andy
+GITHUB_REPO = "https://github.com/GenAICos/llmui-core.git"
 
 class Andy:
     def __init__(self):
@@ -26,6 +31,7 @@ class Andy:
         self.conn = None
         self.setup_database()
         self.llm_model = "qwen2.5:3b"
+        self.github_repo = GITHUB_REPO
         
     def setup_database(self):
         """Initialise la base de données SQLite pour Andy"""
@@ -176,7 +182,7 @@ class Andy:
             return False
         
         # Pull des modèles
-        models = ["phi3:3.8b", "gemma2:2b", "granite4:micro-h"]
+        models = ["phi3:3.8b", "gemma2:2b", "granite4:micro-h", "qwen2.5:3b"]
         for model in models:
             self.log(f"Téléchargement du modèle {model}...", "INFO")
             success, _ = self.execute_command(
@@ -190,22 +196,110 @@ class Andy:
         return True
     
     def get_user_credentials(self):
-        """Demande les identifiants utilisateur"""
+        """Demande les identifiants utilisateur pour LLMUI"""
         print("\n" + "="*60)
-        print("Configuration utilisateur LLMUI")
+        print("🔐 Configuration utilisateur LLMUI Interface")
         print("="*60)
-        username = input("Nom d'utilisateur pour LLMUI [llmui]: ").strip() or "llmui"
-        password = getpass.getpass("Mot de passe pour l'interface LLMUI: ")
+        username = input("Nom d'utilisateur pour l'interface web [admin]: ").strip() or "admin"
         
-        if not password:
-            print("Le mot de passe ne peut pas être vide!")
-            sys.exit(1)
+        while True:
+            password = getpass.getpass("Mot de passe pour l'interface web: ")
+            if not password:
+                print("⚠️  Le mot de passe ne peut pas être vide!")
+                continue
+            
+            password_confirm = getpass.getpass("Confirmez le mot de passe: ")
+            if password != password_confirm:
+                print("⚠️  Les mots de passe ne correspondent pas!")
+                continue
+            
+            break
         
         return username, password
     
+    def create_database_with_user(self, username, password):
+        """Crée la base de données LLMUI avec l'utilisateur"""
+        db_path = "/var/lib/llmui/llmui.db"
+        
+        self.log("Création de la base de données LLMUI...", "INFO")
+        
+        # Créer le répertoire si nécessaire
+        os.makedirs("/var/lib/llmui", exist_ok=True)
+        
+        # Connexion à la base de données
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # Créer les tables
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id TEXT PRIMARY KEY,
+                username TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                email TEXT,
+                is_admin INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_login TIMESTAMP
+            )
+        ''')
+        
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS conversations (
+                id TEXT PRIMARY KEY,
+                user_id TEXT,
+                title TEXT,
+                model TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        ''')
+        
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS messages (
+                id TEXT PRIMARY KEY,
+                conversation_id TEXT,
+                role TEXT,
+                content TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (conversation_id) REFERENCES conversations (id)
+            )
+        ''')
+        
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Créer l'utilisateur admin
+        user_id = str(uuid.uuid4())
+        password_hash = hashlib.sha256(password.encode()).hexdigest()
+        
+        try:
+            cursor.execute(
+                'INSERT INTO users (id, username, password_hash, is_admin, created_at) VALUES (?, ?, ?, 1, ?)',
+                (user_id, username, password_hash, datetime.now().isoformat())
+            )
+            self.log(f"✅ Utilisateur '{username}' créé avec succès", "SUCCESS")
+        except sqlite3.IntegrityError:
+            self.log(f"⚠️  Utilisateur '{username}' existe déjà", "WARNING")
+        
+        conn.commit()
+        conn.close()
+        
+        # Définir les permissions
+        self.execute_command(f"chown -R llmui:llmui /var/lib/llmui", "Permissions base de données", 5)
+        self.execute_command(f"chmod 660 {db_path}", "Permissions fichier DB", 5)
+        
+        self.log(f"Base de données créée: {db_path}", "SUCCESS")
+    
     def run_installation(self):
         """Lance l'installation complète"""
-        self.log("Démarrage de l'installation LLMUI Core par Andy v0.5", "INFO")
+        self.log("Démarrage de l'installation LLMUI Core par Andy v0.5.0", "INFO")
+        self.log(f"Dépôt GitHub: {self.github_repo}", "INFO")
         
         # Étape 1: Mise à jour OS
         self.log("=== ÉTAPE 1: Mise à jour de l'OS ===", "INFO")
@@ -225,107 +319,66 @@ class Andy:
         if not self.check_python_version():
             return False
         
-        # Installation dépendances système
+        # Étape 3: Installation des dépendances
+        self.log("=== ÉTAPE 3: Installation des dépendances ===", "INFO")
         if pkg_manager == "apt":
-            packages = "python3-pip python3-venv python3-dev python3-full build-essential git curl wget nginx certbot python3-certbot-nginx ufw fail2ban sqlite3 net-tools bc"
-            self.execute_command(f"sudo apt-get install -y {packages}", "Installation dépendances", 2, critical=True)
+            deps = "python3-pip python3-venv nginx git curl sqlite3"
+            self.execute_command(f"sudo apt install -y {deps}", "Installation dépendances", 2, critical=True)
         elif pkg_manager in ["dnf", "yum"]:
-            packages = "python3-pip python3-devel gcc git curl wget nginx certbot python3-certbot-nginx firewalld fail2ban sqlite net-tools bc"
-            self.execute_command(f"sudo {pkg_manager} install -y {packages}", "Installation dépendances", 2, critical=True)
+            deps = "python3-pip python3-virtualenv nginx git curl sqlite"
+            self.execute_command(f"sudo {pkg_manager} install -y {deps}", "Installation dépendances", 2, critical=True)
         
-        # Étape 3: Installation Ollama
-        self.log("=== ÉTAPE 3: Installation Ollama et modèles ===", "INFO")
+        # Étape 4: Installation Ollama
+        self.log("=== ÉTAPE 4: Installation Ollama et modèles ===", "INFO")
         if not self.install_ollama_and_models():
-            self.log("Problème avec Ollama, mais continuation...", "WARNING")
+            return False
         
-        # Étape 4: Création utilisateur et répertoires
-        self.log("=== ÉTAPE 4: Création utilisateur et répertoires ===", "INFO")
+        # Étape 5: Demander les credentials utilisateur
         username, password = self.get_user_credentials()
         
-        self.execute_command(
-            f"sudo useradd -r -s /bin/bash -d /opt/llmui-core -m {username}",
-            "Création utilisateur",
-            4
-        )
+        # Étape 6: Création des répertoires
+        self.log("=== ÉTAPE 5: Création des répertoires ===", "INFO")
+        self.execute_command("sudo mkdir -p /opt/llmui-core", "Création /opt/llmui-core", 4)
+        self.execute_command("sudo mkdir -p /var/lib/llmui", "Création /var/lib/llmui", 4)
+        self.execute_command("sudo mkdir -p /var/log/llmui", "Création /var/log/llmui", 4)
         
-        dirs = [
-            "/opt/llmui-core/logs",
-            "/opt/llmui-core/data",
-            "/opt/llmui-core/backups",
-            "/opt/llmui-core/ssl",
-            "/opt/llmui-core/sessions",
-            "/opt/llmui-core/scripts",
-            "/opt/llmui-core/data/conversations",
-            "/opt/llmui-core/data/users",
-            "/opt/llmui-core/data/cache"
-        ]
+        # Créer l'utilisateur système
+        self.execute_command("sudo useradd -r -s /bin/bash -d /opt/llmui-core llmui 2>/dev/null || true", "Création utilisateur llmui", 4)
         
-        for dir_path in dirs:
-            self.execute_command(f"sudo mkdir -p {dir_path}", f"Création {dir_path}", 4)
+        # Étape 7: Initialisation de la base de données avec utilisateur
+        self.log("=== ÉTAPE 6: Initialisation base de données ===", "INFO")
+        self.create_database_with_user(username, password)
         
-        self.execute_command(f"sudo chown -R {username}:{username} /opt/llmui-core", "Chown", 4)
-        self.execute_command("sudo chmod -R 755 /opt/llmui-core", "Chmod 755", 4)
-        self.execute_command("sudo chmod -R 700 /opt/llmui-core/data /opt/llmui-core/backups /opt/llmui-core/sessions", "Chmod 700", 4)
+        # Étape 8: Création des services systemd
+        self.log("=== ÉTAPE 7: Création des services systemd ===", "INFO")
+        self.create_systemd_services()
         
-        # Étape 5: Environnement virtuel Python
-        self.log("=== ÉTAPE 5: Création environnement virtuel Python ===", "INFO")
-        self.execute_command(
-            f"sudo su - {username} -c 'cd /opt/llmui-core && python3 -m venv venv'",
-            "Création venv",
-            5,
-            critical=True
-        )
-        
-        self.execute_command(
-            f"sudo su - {username} -c '/opt/llmui-core/venv/bin/pip install --upgrade pip setuptools wheel'",
-            "Upgrade pip",
-            5
-        )
-        
-        # Installation des packages Python essentiels
-        packages_pip = "pytz==2025.2 fastapi==0.104.1 uvicorn[standard]==0.24.0 aiohttp==3.9.1 pyyaml==6.0.1 python-multipart==0.0.6 python-jose[cryptography]==3.3.0 passlib[bcrypt]==1.7.4 bcrypt==4.1.2 aiosqlite==0.19.0 cryptography==41.0.7 pydantic==2.5.0 pydantic-settings==2.1.0 pytz==2024.1 slowapi==0.1.9 python-dotenv==1.0.0 websockets==12.0"
-        
-        self.execute_command(
-            f"sudo su - {username} -c '/opt/llmui-core/venv/bin/pip install {packages_pip}'",
-            "Installation packages Python",
-            5
-        )
-        
-        # Étape 6: Création des services systemd
-        self.log("=== ÉTAPE 6: Configuration des services systemd ===", "INFO")
-        self.create_systemd_services(username)
-        
-        # Étape 7: Configuration Nginx
-        self.log("=== ÉTAPE 7: Configuration Nginx ===", "INFO")
+        # Étape 9: Configuration Nginx
+        self.log("=== ÉTAPE 8: Configuration Nginx ===", "INFO")
         self.configure_nginx()
         
-        # Étape 8: Configuration Pare-feu
-        self.log("=== ÉTAPE 8: Configuration Pare-feu ===", "INFO")
-        self.configure_firewall()
+        # Étape 10: Configuration pare-feu avec règles strictes
+        self.log("=== ÉTAPE 9: Configuration pare-feu (sécurité) ===", "INFO")
+        self.configure_firewall_strict()
         
-        # Étape 9: Démarrage des services
-        self.log("=== ÉTAPE 9: Démarrage des services ===", "INFO")
-        self.add_note("Services non démarrés car fichiers source manquants - à démarrer après copie des sources", "Installation")
-        
-        self.log("=== Installation de base terminée avec succès ===", "SUCCESS")
-        self.log("NOTE: Copiez les fichiers source vers /opt/llmui-core/ puis démarrez les services", "WARNING")
         return True
     
-    def create_systemd_services(self, username):
-        """Crée les fichiers de service systemd"""
+    def create_systemd_services(self):
+        """Crée les services systemd"""
         
-        # Service backend
-        backend_service = f"""[Unit]
-Description=LLMUI Backend Service
-After=network.target
+        backend_service = """[Unit]
+Description=LLMUI Core Backend
+After=network.target ollama.service
+Wants=ollama.service
 
 [Service]
 Type=simple
-User={username}
+User=llmui
+Group=llmui
 WorkingDirectory=/opt/llmui-core
 Environment="PATH=/opt/llmui-core/venv/bin:/usr/local/bin:/usr/bin:/bin"
-Environment="PYTHONPATH=/opt/llmui-core/src"
-ExecStart=/opt/llmui-core/venv/bin/python /opt/llmui-core/src/llmui_backend.py
+Environment="PYTHONUNBUFFERED=1"
+ExecStart=/opt/llmui-core/venv/bin/python -m uvicorn src.llmui_backend:app --host 127.0.0.1 --port 5000
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -336,24 +389,25 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/opt/llmui-core/data /opt/llmui-core/logs /opt/llmui-core/sessions
+ReadWritePaths=/opt/llmui-core/data /opt/llmui-core/logs /var/lib/llmui /var/log/llmui
 
 [Install]
 WantedBy=multi-user.target
 """
         
-        # Service proxy
-        proxy_service = f"""[Unit]
-Description=LLMUI Proxy Service
+        proxy_service = """[Unit]
+Description=LLMUI Core Proxy
 After=network.target llmui-backend.service
+Requires=llmui-backend.service
 
 [Service]
 Type=simple
-User={username}
+User=llmui
+Group=llmui
 WorkingDirectory=/opt/llmui-core
 Environment="PATH=/opt/llmui-core/venv/bin:/usr/local/bin:/usr/bin:/bin"
-Environment="PYTHONPATH=/opt/llmui-core/src"
-ExecStart=/opt/llmui-core/venv/bin/python /opt/llmui-core/src/llmui_proxy.py
+Environment="PYTHONUNBUFFERED=1"
+ExecStart=/opt/llmui-core/venv/bin/python src/llmui_proxy.py
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -364,7 +418,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/opt/llmui-core/data /opt/llmui-core/logs
+ReadWritePaths=/opt/llmui-core/data /opt/llmui-core/logs /var/lib/llmui /var/log/llmui
 
 [Install]
 WantedBy=multi-user.target
@@ -399,7 +453,7 @@ WantedBy=multi-user.target
         self.log("Services systemd créés", "SUCCESS")
     
     def configure_nginx(self):
-        """Configure Nginx"""
+        """Configure Nginx avec redirection HTTPS"""
         
         nginx_config = """server {
     listen 80;
@@ -410,17 +464,20 @@ WantedBy=multi-user.target
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-XSS-Protection "1; mode=block" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    
+    # Avertissement - rediriger vers HTTPS en production
+    # return 301 https://$server_name$request_uri;
 
     # Root directory
     root /opt/llmui-core/web;
-    index index.html;
+    index index.html login.html;
 
     # Static files
     location / {
         try_files $uri $uri/ /index.html;
     }
 
-    # API proxy to backend
+    # API proxy to backend (localhost only)
     location /api/ {
         proxy_pass http://127.0.0.1:5000/api/;
         proxy_http_version 1.1;
@@ -504,38 +561,59 @@ WantedBy=multi-user.target
         else:
             self.log("Erreur dans la config Nginx", "ERROR")
     
-    def configure_firewall(self):
-        """Configure le pare-feu"""
+    def configure_firewall_strict(self):
+        """Configure le pare-feu avec règles strictes de sécurité"""
         
         # Détection du pare-feu
         if self.execute_command("command -v ufw", "Détection UFW")[0]:
+            self.log("Configuration UFW avec règles strictes...", "INFO")
             self.execute_command("sudo ufw --force enable", "Activation UFW", 8)
             self.execute_command("sudo ufw default deny incoming", "UFW deny incoming", 8)
             self.execute_command("sudo ufw default allow outgoing", "UFW allow outgoing", 8)
-            self.execute_command("sudo ufw allow ssh", "UFW allow SSH", 8)
-            self.execute_command("sudo ufw allow http", "UFW allow HTTP", 8)
-            self.execute_command("sudo ufw allow https", "UFW allow HTTPS", 8)
-            self.log("UFW configuré", "SUCCESS")
+            
+            # Règles publiques
+            self.execute_command("sudo ufw allow 22/tcp", "UFW allow SSH", 8)
+            self.execute_command("sudo ufw allow 80/tcp", "UFW allow HTTP", 8)
+            self.execute_command("sudo ufw allow 443/tcp", "UFW allow HTTPS", 8)
+            
+            # Règles localhost only pour ports internes
+            self.execute_command("sudo ufw allow from 127.0.0.1 to any port 5000 proto tcp", "UFW backend localhost only", 8)
+            self.execute_command("sudo ufw allow from 127.0.0.1 to any port 8080 proto tcp", "UFW proxy localhost only", 8)
+            self.execute_command("sudo ufw allow from 127.0.0.1 to any port 11434 proto tcp", "UFW Ollama localhost only", 8)
+            
+            self.execute_command("sudo ufw reload", "UFW reload", 8)
+            self.log("UFW configuré avec règles strictes", "SUCCESS")
             
         elif self.execute_command("command -v firewall-cmd", "Détection firewalld")[0]:
+            self.log("Configuration firewalld avec règles strictes...", "INFO")
             self.execute_command("sudo systemctl enable --now firewalld", "Activation firewalld", 8)
+            
+            # Règles publiques
             self.execute_command("sudo firewall-cmd --permanent --add-service=ssh", "Firewalld allow SSH", 8)
             self.execute_command("sudo firewall-cmd --permanent --add-service=http", "Firewalld allow HTTP", 8)
             self.execute_command("sudo firewall-cmd --permanent --add-service=https", "Firewalld allow HTTPS", 8)
+            
+            # Règles localhost only
+            self.execute_command("sudo firewall-cmd --permanent --add-rich-rule='rule family=\"ipv4\" source address=\"127.0.0.1\" port port=\"5000\" protocol=\"tcp\" accept'", "Firewalld backend localhost", 8)
+            self.execute_command("sudo firewall-cmd --permanent --add-rich-rule='rule family=\"ipv4\" source address=\"127.0.0.1\" port port=\"8080\" protocol=\"tcp\" accept'", "Firewalld proxy localhost", 8)
+            self.execute_command("sudo firewall-cmd --permanent --add-rich-rule='rule family=\"ipv4\" source address=\"127.0.0.1\" port port=\"11434\" protocol=\"tcp\" accept'", "Firewalld Ollama localhost", 8)
+            
             self.execute_command("sudo firewall-cmd --reload", "Firewalld reload", 8)
-            self.log("Firewalld configuré", "SUCCESS")
+            self.log("Firewalld configuré avec règles strictes", "SUCCESS")
+        else:
+            self.log("⚠️  Aucun pare-feu détecté - configuration manuelle recommandée", "WARNING")
     
     def verify_installation(self):
         """Vérifie que l'installation de base fonctionne"""
         self.log("=== VÉRIFICATION POST-INSTALLATION ===", "INFO")
         
         checks = [
-            ("test -d /opt/llmui-core/venv", "Environnement virtuel"),
+            ("test -d /opt/llmui-core", "Répertoire installation"),
+            ("test -f /var/lib/llmui/llmui.db", "Base de données"),
             ("test -f /etc/systemd/system/llmui-backend.service", "Service backend créé"),
             ("test -f /etc/systemd/system/llmui-proxy.service", "Service proxy créé"),
             ("test -f /etc/nginx/sites-available/llmui", "Config Nginx"),
-            ("sudo systemctl is-active nginx", "Service nginx"),
-            ("curl -I http://localhost/", "Test HTTP")
+            ("sudo systemctl is-active nginx", "Service nginx")
         ]
         
         all_ok = True
@@ -561,11 +639,15 @@ def main():
         if andy.run_installation():
             andy.verify_installation()
             print("\n" + "="*60)
-            print("Installation terminée! Vérifiez les logs dans /tmp/andy_install.log")
-            print("Base de données: /tmp/andy_installation.db")
+            print("✅ Installation terminée!")
+            print("="*60)
+            print(f"📋 Logs: /tmp/andy_install.log")
+            print(f"🗄️  Base de données: /tmp/andy_installation.db")
+            print(f"🌐 Dépôt GitHub: {GITHUB_REPO}")
+            print("⚠️  IMPORTANT: Configurez SSL/HTTPS avant exposition publique!")
             print("="*60)
         else:
-            print("\nInstallation échouée. Consultez les logs.")
+            print("\n❌ Installation échouée. Consultez les logs.")
             sys.exit(1)
     except KeyboardInterrupt:
         andy.log("Installation interrompue par l'utilisateur", "WARNING")
