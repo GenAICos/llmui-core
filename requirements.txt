@@ -1,5 +1,5 @@
 # ============================================================================
-# LLMUI Core v2.0 - Python Dependencies (FastAPI Version) - CORRECTED & COMPLETE
+# LLMUI Core v0.5.0 - Python Dependencies (FastAPI Version) - CORRECTED & COMPLETE
 # ============================================================================
 # Author: François Chalut
 # Website: https://llmui.org
