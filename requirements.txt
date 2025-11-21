@@ -92,3 +92,4 @@ prometheus-client==0.19.0
 # SYSTEM & PLATFORM
 psutil==5.9.6
 GPUtil==1.4.0
+pytz==2025.2
