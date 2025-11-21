@@ -6,7 +6,7 @@ Installation automatisée de LLMUI Core
 ==============================================================================
 Auteur: Francois Chalut
 Date: 2025-11-21
-Licence: Propriétaire
+Licence: AGPLv3 + common clause
 ==============================================================================
 """
 
@@ -283,7 +283,7 @@ class Andy:
         )
         
         # Installation des packages Python essentiels
-        packages_pip = "fastapi==0.104.1 uvicorn[standard]==0.24.0 aiohttp==3.9.1 pyyaml==6.0.1 python-multipart==0.0.6 python-jose[cryptography]==3.3.0 passlib[bcrypt]==1.7.4 bcrypt==4.1.2 aiosqlite==0.19.0 cryptography==41.0.7 pydantic==2.5.0 pydantic-settings==2.1.0 pytz==2024.1 slowapi==0.1.9 python-dotenv==1.0.0 websockets==12.0"
+        packages_pip = "pytz==2025.2 fastapi==0.104.1 uvicorn[standard]==0.24.0 aiohttp==3.9.1 pyyaml==6.0.1 python-multipart==0.0.6 python-jose[cryptography]==3.3.0 passlib[bcrypt]==1.7.4 bcrypt==4.1.2 aiosqlite==0.19.0 cryptography==41.0.7 pydantic==2.5.0 pydantic-settings==2.1.0 pytz==2024.1 slowapi==0.1.9 python-dotenv==1.0.0 websockets==12.0"
         
         self.execute_command(
             f"sudo su - {username} -c '/opt/llmui-core/venv/bin/pip install {packages_pip}'",
