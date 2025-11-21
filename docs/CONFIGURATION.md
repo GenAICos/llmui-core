@@ -1,6 +1,6 @@
 # 🔧 LLMUI Core - Configuration Guide
 
-**Version:** 2.0.0  
+**Version:** 0.5.0  
 **Author:** François Chalut  
 **Website:** https://llmui.org
 
@@ -397,5 +397,5 @@ Before deploying, verify you've edited:
 ---
 
 **Author:** François Chalut  
-**Version:** 2.0.0  
+**Version:** 0.5.0  
 **Last Updated:** 2025-01-18

@@ -1,6 +1,8 @@
-# LLMUI Core v2.0
+# LLMUI Core v0.5.0
 
-[![License](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
+[![AGPL v3](https://img.shields.io/badge/AGPL%20v3-Open%20Source-green.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![Commons Clause](https://img.shields.io/badge/Commons%20Clause-No%20Commercial-red.svg)](LICENSE)
+[![Enterprise Clause](https://img.shields.io/badge/Enterprise-Publication%20Required-orange.svg)](ENTERPRISE_CLAUSE_EXPLAINED.md)
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://python.org)
 [![Platform](https://img.shields.io/badge/Platform-Linux-lightgrey.svg)](https://kernel.org)
 
@@ -385,19 +387,19 @@ sudo python3 andy_start_services.py
 
 ## 🤝 Contribution
 
-Ce projet est développé par **Génie IA Centre Opérationnel Sécurité inc.**
+Ce projet est développé par **Francois Chalut**
 
 Pour toute question ou contribution:
-- **Email**: contact@genie-ia.ca
-- **Issues**: [GitHub Issues](https://github.com/votre-repo/llmui-core/issues)
+- **Email**: contact@llmui.org
+- **Issues**: [GitHub Issues](https://github.com/GenAICos/llmui-core/issues)
 
 ---
 
 ## 📜 Licence
 
-© 2025 Génie IA Centre Opérationnel Sécurité inc.
+© 2025 Francois Chalut.
 
-Ce logiciel est propriétaire et protégé par les lois sur le droit d'auteur. Tous droits réservés.
+AGPLv3 + common clause
 
 Voir [LICENSE](LICENSE) pour plus de détails.
 
@@ -417,11 +419,11 @@ LLMUI Core s'inscrit dans une vision de **souveraineté numérique québécoise*
 
 ## 📞 Support
 
-**Documentation**: [GitHub Wiki](https://github.com/votre-repo/llmui-core/wiki)  
+**Documentation**: [GitHub Wiki](https://github.com/GenAICos/llmui-core/wiki)  
 **Logs Andy**: `/tmp/andy_install.log`  
 **Base de données Andy**: `/tmp/andy_installation.db`  
 **Installation**: `/opt/llmui-core/`
 
 ---
 
-**Développé avec 💙 au Québec par Génie IA Centre Opérationnel Sécurité inc.**
+**Développé avec 💙 au Québec par Francois Chalut**

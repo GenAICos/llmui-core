@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
 ==============================================================================
-Andy - Assistant DevOps Autonome v0.5
+Andy - Assistant DevOps Autonome v0.5.0
 Installation automatisée de LLMUI Core
 ==============================================================================
-Auteur: Génie IA Centre Opérationnel Sécurité inc.
+Auteur: Francois Chalut
 Date: 2025-11-21
 Licence: Propriétaire
 ==============================================================================

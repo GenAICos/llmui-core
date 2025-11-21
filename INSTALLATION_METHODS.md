@@ -1,4 +1,4 @@
-# 🎯 Trois façons d'installer LLMUI Core v2.0
+# 🎯 Trois façons d'installer LLMUI Core v0.5.0
 
 LLMUI Core offre **3 méthodes d'installation** pour s'adapter à tous les niveaux de confort et besoins.
 
@@ -348,5 +348,5 @@ sudo bash andy_setup.sh
 
 ---
 
-**Génie IA Centre Opérationnel Sécurité inc.**  
+**Francois Chalut**  
 *Trois méthodes, un seul objectif: Souveraineté numérique* 🇨🇦

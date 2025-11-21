@@ -1,4 +1,4 @@
-# Guide de contribution - LLMUI Core
+# Guide de contribution - LLMUI Core v 0.5.0
 
 Merci de votre intérêt pour contribuer à LLMUI Core! Ce document explique comment participer au développement du projet.
 
@@ -551,7 +551,7 @@ Les contributeurs actifs peuvent recevoir:
 
 N'hésitez pas à:
 - Ouvrir une discussion sur GitHub
-- Contacter l'équipe: dev@genie-ia.ca
+- Contacter l'équipe: contact@llmui.org
 - Consulter la documentation: docs/
 
 ---
@@ -562,4 +562,4 @@ N'hésitez pas à:
 
 ---
 
-**Génie IA Centre Opérationnel Sécurité inc.** - 2025
+**Francois Chalut** - 2025

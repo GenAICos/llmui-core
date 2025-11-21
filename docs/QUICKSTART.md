@@ -1,4 +1,4 @@
-# 🚀 Démarrage rapide - LLMUI Core
+# 🚀 Démarrage rapide - LLMUI Core v0.5.0
 
 Guide ultra-rapide pour installer et utiliser LLMUI Core en moins de 15 minutes.
 
@@ -429,4 +429,4 @@ sudo systemctl restart llmui-backend llmui-proxy
 
 ---
 
-**Génie IA Centre Opérationnel Sécurité inc.** - 2025
+**Francois Chalut** - 2025

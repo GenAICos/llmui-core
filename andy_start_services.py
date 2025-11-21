@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ==============================================================================
-Andy Start Services - Démarrage des services LLMUI Core
+Andy Start Services - Démarrage des services LLMUI Core V 0.5.0
 ==============================================================================
 Ce script démarre les services après que les fichiers source ont été copiés
 ==============================================================================
