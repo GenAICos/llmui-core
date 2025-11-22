@@ -1,18 +1,13 @@
 #!/usr/bin/env python3
 """
 ==============================================================================
-Andy - Assistant DevOps Autonome v0.5.1
+Andy - Assistant DevOps Autonome v0.5.0
 Installation automatisée de LLMUI Core
 ==============================================================================
 Auteur: Francois Chalut
 Date: 2025-11-22
 Licence: AGPLv3 + common clause
 
-CORRECTIFS v0.5.1:
-- FIX: Schéma de base de données compatible avec llmui_backend.py
-- FIX: Installation de toutes les dépendances FastAPI requises
-- FIX: Ajout des colonnes processing_time dans conversations
-==============================================================================
 """
 
 import subprocess
