@@ -1,15 +1,10 @@
 #!/usr/bin/env python3
 """
 ==============================================================================
-Andy Deploy Source - Déploiement des fichiers source LLMUI Core v0.5.1
+Andy Deploy Source - Déploiement des fichiers source LLMUI Core v0.5.0
 ==============================================================================
 Clone le dépôt Git et copie les fichiers vers /opt/llmui-core/
 
-CORRECTIFS v0.5.1:
-- FIX: Ne plus réinstaller fastapi/uvicorn (déjà installés par andy_installer.py)
-- FIX: Installer uniquement les dépendances additionnelles de requirements.txt
-- FIX: Préserver le venv existant
-==============================================================================
 """
 
 import subprocess
