@@ -12,6 +12,9 @@ import sys
 import os
 import shutil
 
+# Dépôt GitHub connu par Andy
+GITHUB_REPO = "https://github.com/GenAICos/llmui-core.git"
+
 def log(message, level="INFO"):
     """Log simple"""
     print(f"[{level}] {message}")
@@ -32,93 +35,115 @@ def execute_command(command, description):
 
 def main():
     log("=== Déploiement des fichiers source LLMUI Core ===", "INFO")
+    log(f"Dépôt GitHub: {GITHUB_REPO}", "INFO")
     
-    # Demander l'URL du dépôt
-    print("\n" + "="*60)
-    repo_url = input("URL du dépôt Git (ou ENTER pour passer): ").strip()
+    # Clone du dépôt
+    temp_dir = "/tmp/llmui-source"
     
-    if repo_url:
-        # Clone du dépôt
-        temp_dir = "/tmp/llmui-source"
-        
-        # Nettoyage du répertoire temporaire
-        if os.path.exists(temp_dir):
-            log("Nettoyage du répertoire temporaire...", "INFO")
-            shutil.rmtree(temp_dir)
-        
-        success, _ = execute_command(
-            f"git clone {repo_url} {temp_dir}",
-            "Clonage du dépôt"
+    # Nettoyage du répertoire temporaire
+    if os.path.exists(temp_dir):
+        log("Nettoyage du répertoire temporaire...", "INFO")
+        shutil.rmtree(temp_dir)
+    
+    success, _ = execute_command(
+        f"git clone {GITHUB_REPO} {temp_dir}",
+        "Clonage du dépôt GitHub"
+    )
+    
+    if not success:
+        log("Échec du clonage", "ERROR")
+        log("Vérifiez votre connexion internet et l'accès à GitHub", "ERROR")
+        sys.exit(1)
+    
+    # Copie des fichiers
+    log("Copie des fichiers source vers /opt/llmui-core/...", "INFO")
+    
+    # Copie du répertoire src
+    if os.path.exists(f"{temp_dir}/src"):
+        execute_command(
+            f"sudo cp -r {temp_dir}/src /opt/llmui-core/",
+            "Copie répertoire src"
+        )
+    else:
+        log("⚠️  Répertoire src/ non trouvé dans le dépôt", "WARNING")
+    
+    # Copie du répertoire web
+    if os.path.exists(f"{temp_dir}/web"):
+        execute_command(
+            f"sudo cp -r {temp_dir}/web /opt/llmui-core/",
+            "Copie répertoire web"
+        )
+    else:
+        log("⚠️  Répertoire web/ non trouvé dans le dépôt", "WARNING")
+    
+    # Copie du répertoire scripts
+    if os.path.exists(f"{temp_dir}/scripts"):
+        execute_command(
+            f"sudo cp -r {temp_dir}/scripts /opt/llmui-core/",
+            "Copie répertoire scripts"
+        )
+    
+    # Copie config.yaml.example
+    if os.path.exists(f"{temp_dir}/config.yaml.example"):
+        # Vérifier si config.yaml existe déjà
+        if os.path.exists("/opt/llmui-core/config.yaml"):
+            execute_command(
+                f"sudo cp {temp_dir}/config.yaml.example /opt/llmui-core/config.yaml.example",
+                "Copie config.yaml.example (config.yaml existe déjà)"
+            )
+        else:
+            execute_command(
+                f"sudo cp {temp_dir}/config.yaml.example /opt/llmui-core/config.yaml",
+                "Copie config.yaml depuis example"
+            )
+    
+    # Copie requirements.txt si présent
+    if os.path.exists(f"{temp_dir}/requirements.txt"):
+        execute_command(
+            f"sudo cp {temp_dir}/requirements.txt /opt/llmui-core/",
+            "Copie requirements.txt"
         )
         
-        if not success:
-            log("Échec du clonage", "ERROR")
-            sys.exit(1)
-        
-        # Copie des fichiers
-        log("Copie des fichiers source...", "INFO")
-        
-        # Copie du répertoire src
-        if os.path.exists(f"{temp_dir}/src"):
-            execute_command(
-                f"sudo cp -r {temp_dir}/src /opt/llmui-core/",
-                "Copie répertoire src"
-            )
-        
-        # Copie du répertoire web
-        if os.path.exists(f"{temp_dir}/web"):
-            execute_command(
-                f"sudo cp -r {temp_dir}/web /opt/llmui-core/",
-                "Copie répertoire web"
-            )
-        
-        # Copie config.yaml
-        if os.path.exists(f"{temp_dir}/config.yaml"):
-            execute_command(
-                f"sudo cp {temp_dir}/config.yaml /opt/llmui-core/",
-                "Copie config.yaml"
-            )
-        
-        # Copie requirements.txt si présent
-        if os.path.exists(f"{temp_dir}/requirements.txt"):
-            execute_command(
-                f"sudo cp {temp_dir}/requirements.txt /opt/llmui-core/",
-                "Copie requirements.txt"
-            )
-        
-        # Ajustement des permissions
+        # Installation des dépendances Python
+        log("Installation des dépendances Python...", "INFO")
         execute_command(
-            "sudo chown -R admin:admin /opt/llmui-core/src",
-            "Permissions src"
+            "/opt/llmui-core/venv/bin/pip install -r /opt/llmui-core/requirements.txt",
+            "Installation dépendances"
         )
+    
+    # Ajustement des permissions
+    log("Configuration des permissions...", "INFO")
+    execute_command(
+        "sudo chown -R llmui:llmui /opt/llmui-core/src",
+        "Permissions src"
+    )
+    execute_command(
+        "sudo chown -R llmui:llmui /opt/llmui-core/web",
+        "Permissions web"
+    )
+    
+    if os.path.exists("/opt/llmui-core/config.yaml"):
         execute_command(
-            "sudo chown -R admin:admin /opt/llmui-core/web",
-            "Permissions web"
-        )
-        execute_command(
-            "sudo chown admin:admin /opt/llmui-core/config.yaml",
+            "sudo chown llmui:llmui /opt/llmui-core/config.yaml",
             "Permissions config"
         )
         execute_command(
             "sudo chmod 600 /opt/llmui-core/config.yaml",
             "Chmod config"
         )
+    
+    if os.path.exists("/opt/llmui-core/src"):
         execute_command(
-            "sudo chmod +x /opt/llmui-core/src/*.py",
+            "sudo chmod +x /opt/llmui-core/src/*.py 2>/dev/null || true",
             "Scripts exécutables"
         )
-        
-        log("\n✓ Fichiers source déployés avec succès", "SUCCESS")
-        log("\nProchaine étape: sudo python3 andy_start_services.py", "INFO")
-        
-    else:
-        log("Pas de dépôt spécifié", "INFO")
-        log("Copiez manuellement les fichiers vers /opt/llmui-core/", "INFO")
-        log("Structure requise:", "INFO")
-        log("  /opt/llmui-core/src/llmui_backend.py", "INFO")
-        log("  /opt/llmui-core/src/llmui_proxy.py", "INFO")
-        log("  /opt/llmui-core/web/index.html", "INFO")
-        log("  /opt/llmui-core/config.yaml", "INFO")
+    
+    # Nettoyage
+    log("Nettoyage du répertoire temporaire...", "INFO")
+    shutil.rmtree(temp_dir)
+    
+    log("\n✓ Fichiers source déployés avec succès", "SUCCESS")
+    log("\nProchaine étape: sudo python3 andy_start_services.py", "INFO")
 
 if __name__ == "__main__":
     if os.geteuid() != 0:
