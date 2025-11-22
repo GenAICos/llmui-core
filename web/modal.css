@@ -1,0 +1,106 @@
+/*
+ * LLMUI Core v2.0 - Modal Components
+ * Author: Francois Chalut
+ * Website: https://llmui.org
+ */
+
+/* ============================================================================
+   MODAL
+   ============================================================================ */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.info-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.9);
+    background: var(--bg-panel);
+    border: 1px solid var(--border-cyan);
+    border-radius: var(--radius-xl);
+    padding: 2rem;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s ease;
+}
+
+.info-modal.active {
+    opacity: 1;
+    pointer-events: all;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.modal-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.modal-close:hover {
+    color: var(--error);
+    transform: rotate(90deg);
+}
+
+.info-modal h2 {
+    color: var(--cyan);
+    margin-bottom: 1.5rem;
+}
+
+.info-content ul {
+    list-style: none;
+    padding: 0;
+}
+
+.info-content li {
+    padding: 0.5rem 0;
+    color: var(--text-secondary);
+}
+
+.info-content li::before {
+    content: "✔ ";
+    color: var(--success);
+    font-weight: bold;
+    margin-right: 0.5rem;
+}
+
+.warning-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: var(--radius-md);
+    margin-top: 1rem;
+}
+
+.warning-banner span:first-child {
+    font-size: 1.25rem;
+}

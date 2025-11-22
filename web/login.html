@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLMUI - Connexion</title>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --cyan: #06b6d4;
+            --cyan-glow: rgba(6, 182, 212, 0.3);
+            --success: #10b981;
+            --error: #ef4444;
+            
+            --bg-main: #0f172a;
+            --bg-panel: #1e293b;
+            --bg-card: #334155;
+            --bg-hover: #475569;
+            --bg-input: #1e293b;
+            
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            
+            --border: rgba(148, 163, 184, 0.2);
+            --border-cyan: rgba(6, 182, 212, 0.3);
+            --border-focus: rgba(6, 182, 212, 0.6);
+            
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            --shadow-glow: 0 0 20px var(--cyan-glow);
+            
+            --radius-md: 0.75rem;
+            --radius-lg: 1rem;
+            --radius-xl: 1.5rem;
+            
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 440px;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo-section {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .logo-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: white;
+            box-shadow: var(--shadow-glow);
+            margin-bottom: 1rem;
+        }
+
+        .logo-title {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .logo-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .login-card {
+            background: var(--bg-panel);
+            border-radius: var(--radius-xl);
+            padding: 2.5rem;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .login-header h2 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .login-header p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .password-wrapper {
+            position: relative;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 0.25rem;
+            transition: var(--transition);
+        }
+
+        .toggle-password:hover {
+            color: var(--text-primary);
+        }
+
+        .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .remember-me input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--cyan);
+        }
+
+        .remember-me label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .login-button {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            border: none;
+            border-radius: var(--radius-md);
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .login-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 30px var(--cyan-glow);
+        }
+
+        .login-button:active {
+            transform: translateY(0);
+        }
+
+        .login-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 1.5rem;
+            display: none;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #6ee7b7;
+        }
+
+        .alert-icon {
+            margin-right: 0.5rem;
+        }
+
+        .footer-links {
+            text-align: center;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .footer-links a {
+            color: var(--cyan);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: var(--transition);
+        }
+
+        .footer-links a:hover {
+            color: var(--primary);
+        }
+
+        .version-info {
+            text-align: center;
+            margin-top: 2rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+            margin-right: 0.5rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Theme light */
+        body.light-theme {
+            --bg-main: #f8fafc;
+            --bg-panel: #ffffff;
+            --bg-card: #f1f5f9;
+            --bg-hover: #e2e8f0;
+            --bg-input: #ffffff;
+            
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            
+            --border: rgba(15, 23, 42, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .theme-toggle {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            width: 48px;
+            height: 48px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" id="themeToggle" title="Basculer le thème">🌙</button>
+
+    <div class="login-container">
+        <div class="logo-section">
+            <div class="logo-icon">L</div>
+            <div class="logo-title">LLMUI Core</div>
+            <div class="logo-subtitle">Interface de Consensus Multi-Modèles</div>
+        </div>
+
+        <div class="login-card">
+            <div class="login-header">
+                <h2>🔐 Connexion</h2>
+                <p>Connectez-vous à votre compte LLMUI</p>
+            </div>
+
+            <div class="alert alert-error" id="errorAlert">
+                <span class="alert-icon">⚠️</span>
+                <span id="errorMessage"></span>
+            </div>
+
+            <div class="alert alert-success" id="successAlert">
+                <span class="alert-icon">✅</span>
+                <span id="successMessage"></span>
+            </div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label class="form-label" for="username">
+                        👤 Nom d'utilisateur
+                    </label>
+                    <input 
+                        type="text" 
+                        class="form-input" 
+                        id="username" 
+                        name="username"
+                        placeholder="Entrez votre nom d'utilisateur"
+                        required
+                        autocomplete="username"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="password">
+                        🔑 Mot de passe
+                    </label>
+                    <div class="password-wrapper">
+                        <input 
+                            type="password" 
+                            class="form-input" 
+                            id="password" 
+                            name="password"
+                            placeholder="Entrez votre mot de passe"
+                            required
+                            autocomplete="current-password"
+                        >
+                        <button type="button" class="toggle-password" id="togglePassword">
+                            👁️
+                        </button>
+                    </div>
+                </div>
+
+                <div class="remember-me">
+                    <input type="checkbox" id="rememberMe" name="rememberMe">
+                    <label for="rememberMe">Se souvenir de moi</label>
+                </div>
+
+                <button type="submit" class="login-button" id="loginButton">
+                    Se connecter
+                </button>
+            </form>
+
+            <div class="footer-links">
+                <a href="#" id="forgotPassword">Mot de passe oublié ?</a>
+            </div>
+        </div>
+
+        <div class="version-info">
+            LLMUI Core v2.0 • Connexion sécurisée
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+</body>
+</html>
