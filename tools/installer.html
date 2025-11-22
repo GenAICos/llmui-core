@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Installation LLMUI - Interface Web</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .installer-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 900px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .step {
+            display: none;
+        }
+
+        .step.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.5s ease;
+            border-radius: 4px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        button {
+            flex: 1;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-primary:disabled,
+        .btn-secondary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .log-container {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+
+        .log-line {
+            margin: 5px 0;
+            line-height: 1.5;
+        }
+
+        .log-line.error {
+            color: #ff4444;
+        }
+
+        .log-line.warning {
+            color: #ffaa00;
+        }
+
+        .log-line.success {
+            color: #00ff00;
+        }
+
+        .log-line.info {
+            color: #00aaff;
+        }
+
+        .status-icon {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .summary-box {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .summary-box h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .summary-item:last-child {
+            border-bottom: none;
+        }
+
+        .summary-label {
+            font-weight: 600;
+            color: #666;
+        }
+
+        .summary-value {
+            color: #333;
+        }
+
+        .error-summary {
+            background: #fff5f5;
+            border: 2px solid #ff4444;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .error-summary h3 {
+            color: #ff4444;
+            margin-bottom: 15px;
+        }
+
+        .error-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .error-list li {
+            padding: 8px 0;
+            color: #d32f2f;
+            border-bottom: 1px solid #ffcdd2;
+        }
+
+        .error-list li:last-child {
+            border-bottom: none;
+        }
+
+        .success-banner {
+            background: #f0fff4;
+            border: 2px solid #00ff00;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .success-banner h2 {
+            color: #22c55e;
+            margin-bottom: 15px;
+        }
+
+        .access-links {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .access-link {
+            flex: 1;
+            padding: 15px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            transition: transform 0.3s;
+        }
+
+        .access-link:hover {
+            transform: translateY(-2px);
+        }
+
+        .continue-button {
+            margin-top: 20px;
+            width: 100%;
+            padding: 15px;
+            font-size: 1.2em;
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .continue-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(34, 197, 94, 0.4);
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="installer-container">
+        <div class="header">
+            <h1>🚀 Installation LLMUI</h1>
+            <p>Assistant d'installation guidé - Version 0.5</p>
+        </div>
+
+        <div class="content">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 0%;"></div>
+            </div>
+
+            <!-- Étape 1: Bienvenue -->
+            <div class="step active" id="step1">
+                <h2>👋 Bienvenue dans l'installateur LLMUI</h2>
+                <p style="margin: 20px 0; line-height: 1.6;">
+                    Cet assistant va vous guider à travers l'installation complète de LLMUI sur votre système.
+                    L'installation comprend :
+                </p>
+                <ul style="margin-left: 30px; line-height: 2;">
+                    <li>Configuration de l'environnement Python</li>
+                    <li>Installation des dépendances</li>
+                    <li>Configuration SSL</li>
+                    <li>Démarrage des services</li>
+                </ul>
+                <div class="button-group">
+                    <button class="btn-primary" onclick="nextStep()">Commencer l'installation</button>
+                </div>
+            </div>
+
+            <!-- Étape 2: Configuration -->
+            <div class="step" id="step2">
+                <h2>⚙️ Configuration</h2>
+                <div class="form-group">
+                    <label for="installDir">Répertoire d'installation</label>
+                    <input type="text" id="installDir" value="/opt/llmui-core" placeholder="/opt/llmui-core">
+                </div>
+                <div class="form-group">
+                    <label for="backendPort">Port Backend</label>
+                    <input type="number" id="backendPort" value="8000" placeholder="8000">
+                </div>
+                <div class="form-group">
+                    <label for="proxyPort">Port Proxy</label>
+                    <input type="number" id="proxyPort" value="9000" placeholder="9000">
+                </div>
+                <div class="button-group">
+                    <button class="btn-secondary" onclick="previousStep()">Retour</button>
+                    <button class="btn-primary" onclick="startInstallation()">Lancer l'installation</button>
+                </div>
+            </div>
+
+            <!-- Étape 3: Installation en cours -->
+            <div class="step" id="step3">
+                <h2>🔄 Installation en cours...</h2>
+                <div class="spinner"></div>
+                <div class="log-container" id="logContainer"></div>
+            </div>
+
+            <!-- Étape 4: Résultats -->
+            <div class="step" id="step4">
+                <div id="installationResults"></div>
+                <button class="continue-button hidden" id="continueBtn" onclick="showDetailedLogs()">
+                    Voir les logs détaillés
+                </button>
+                <div class="log-container hidden" id="detailedLogs"></div>
+                <div class="button-group" style="margin-top: 20px;">
+                    <button class="btn-secondary" onclick="window.location.reload()">Réinstaller</button>
+                    <button class="btn-primary" id="finishBtn" onclick="finishInstallation()">Terminer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentStep = 1;
+        const totalSteps = 4;
+        let installationErrors = [];
+        let installationWarnings = [];
+        let installationLogs = [];
+
+        function updateProgress() {
+            const progress = (currentStep / totalSteps) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+        }
+
+        function nextStep() {
+            if (currentStep < totalSteps) {
+                document.getElementById(`step${currentStep}`).classList.remove('active');
+                currentStep++;
+                document.getElementById(`step${currentStep}`).classList.add('active');
+                updateProgress();
+            }
+        }
+
+        function previousStep() {
+            if (currentStep > 1) {
+                document.getElementById(`step${currentStep}`).classList.remove('active');
+                currentStep--;
+                document.getElementById(`step${currentStep}`).classList.add('active');
+                updateProgress();
+            }
+        }
+
+        function addLog(message, type = 'info') {
+            const logContainer = document.getElementById('logContainer');
+            const logLine = document.createElement('div');
+            logLine.className = `log-line ${type}`;
+            
+            const icon = type === 'error' ? '❌' :
+                        type === 'warning' ? '⚠️' :
+                        type === 'success' ? '✅' : 'ℹ️';
+            
+            logLine.textContent = `${icon} ${new Date().toLocaleTimeString()} - ${message}`;
+            logContainer.appendChild(logLine);
+            logContainer.scrollTop = logContainer.scrollHeight;
+
+            // Stocker dans les logs
+            installationLogs.push({message, type, timestamp: new Date()});
+            
+            if (type === 'error') {
+                installationErrors.push(message);
+            } else if (type === 'warning') {
+                installationWarnings.push(message);
+            }
+        }
+
+        async function startInstallation() {
+            nextStep();
+            
+            const installDir = document.getElementById('installDir').value;
+            const backendPort = document.getElementById('backendPort').value;
+            const proxyPort = document.getElementById('proxyPort').value;
+
+            addLog('Démarrage de l\'installation...', 'info');
+            
+            const steps = [
+                { name: 'Vérification des prérequis', func: checkPrerequisites },
+                { name: 'Création de la structure', func: createStructure },
+                { name: 'Configuration de l\'environnement virtuel', func: setupVenv },
+                { name: 'Installation des dépendances', func: installDependencies },
+                { name: 'Configuration SSL', func: setupSSL },
+                { name: 'Création de la configuration', func: createConfig },
+                { name: 'Vérification des fichiers web', func: verifyWebFiles },
+                { name: 'Démarrage des services', func: startServices }
+            ];
+
+            let success = true;
+            for (const step of steps) {
+                addLog(`Étape: ${step.name}`, 'info');
+                try {
+                    const result = await step.func(installDir, backendPort, proxyPort);
+                    if (result.success) {
+                        addLog(`✓ ${step.name} terminée`, 'success');
+                    } else {
+                        addLog(`✗ ${step.name} échouée: ${result.error}`, 'error');
+                        success = false;
+                    }
+                } catch (error) {
+                    addLog(`✗ Erreur: ${error.message}`, 'error');
+                    success = false;
+                }
+            }
+
+            // Afficher les résultats
+            setTimeout(() => {
+                showResults(success);
+            }, 1000);
+        }
+
+        function showResults(success) {
+            nextStep();
+            
+            const resultsDiv = document.getElementById('installationResults');
+            
+            if (success && installationErrors.length === 0) {
+                resultsDiv.innerHTML = `
+                    <div class="success-banner">
+                        <h2>🎉 Installation réussie !</h2>
+                        <p>LLMUI a été installé et configuré avec succès.</p>
+                        <div class="access-links">
+                            <a href="http://localhost:9000" class="access-link" target="_blank">
+                                🌐 Interface Web
+                            </a>
+                            <a href="http://localhost:8000/docs" class="access-link" target="_blank">
+                                🔧 API Backend
+                            </a>
+                        </div>
+                    </div>
+                `;
+            } else {
+                let errorHTML = '';
+                if (installationErrors.length > 0) {
+                    errorHTML = `
+                        <div class="error-summary">
+                            <h3>❌ Erreurs détectées (${installationErrors.length})</h3>
+                            <ul class="error-list">
+                                ${installationErrors.map(error => `<li>${error}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+                
+                let warningHTML = '';
+                if (installationWarnings.length > 0) {
+                    warningHTML = `
+                        <div class="error-summary" style="border-color: #ffaa00; background: #fffbf0;">
+                            <h3 style="color: #ffaa00;">⚠️ Avertissements (${installationWarnings.length})</h3>
+                            <ul class="error-list">
+                                ${installationWarnings.map(warning => `<li style="color: #f57c00;">${warning}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+                
+                resultsDiv.innerHTML = `
+                    <h2 style="color: #ff4444;">⚠️ Installation terminée avec des problèmes</h2>
+                    ${errorHTML}
+                    ${warningHTML}
+                    <p style="margin-top: 20px;">
+                        Consultez les logs détaillés ci-dessous pour plus d'informations.
+                    </p>
+                `;
+            }
+
+            // Afficher le bouton continuer
+            document.getElementById('continueBtn').classList.remove('hidden');
+        }
+
+        function showDetailedLogs() {
+            const detailedLogsDiv = document.getElementById('detailedLogs');
+            detailedLogsDiv.innerHTML = '';
+            
+            installationLogs.forEach(log => {
+                const logLine = document.createElement('div');
+                logLine.className = `log-line ${log.type}`;
+                const icon = log.type === 'error' ? '❌' :
+                            log.type === 'warning' ? '⚠️' :
+                            log.type === 'success' ? '✅' : 'ℹ️';
+                logLine.textContent = `${icon} ${log.timestamp.toLocaleTimeString()} - ${log.message}`;
+                detailedLogsDiv.appendChild(logLine);
+            });
+            
+            detailedLogsDiv.classList.remove('hidden');
+            document.getElementById('continueBtn').classList.add('hidden');
+        }
+
+        function finishInstallation() {
+            if (installationErrors.length === 0) {
+                window.location.href = 'http://localhost:9000';
+            } else {
+                alert('L\'installation a rencontré des erreurs. Veuillez les corriger avant de continuer.');
+            }
+        }
+
+        // Fonctions de simulation pour les étapes
+        async function checkPrerequisites() {
+            await sleep(1000);
+            return { success: true };
+        }
+
+        async function createStructure() {
+            await sleep(1000);
+            return { success: true };
+        }
+
+        async function setupVenv() {
+            await sleep(2000);
+            return { success: true };
+        }
+
+        async function installDependencies() {
+            await sleep(3000);
+            return { success: true };
+        }
+
+        async function setupSSL() {
+            await sleep(1000);
+            return { success: true };
+        }
+
+        async function createConfig() {
+            await sleep(500);
+            return { success: true };
+        }
+
+        async function verifyWebFiles() {
+            await sleep(500);
+            return { success: true };
+        }
+
+        async function startServices() {
+            await sleep(2000);
+            return { success: true };
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Initialisation
+        updateProgress();
+    </script>
+</body>
+</html>
