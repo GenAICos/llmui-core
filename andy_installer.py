@@ -446,7 +446,7 @@ Now provide ONLY the fixes needed:"""
             return False
         
         # Pull des modèles - MAINTENANT Ollama devrait être prêt
-        models = ["phi3:3.8b", "gemma2:2b", "granite3.1:2b", "qwen2.5:3b"]
+        models = ["phi3:3.8b", "gemma2:2b", "granite4:micro-h", "qwen2.5:3b"]
         for model in models:
             self.log(f"📥 Téléchargement du modèle {model}...", "INFO")
             success, output = self.execute_command(
