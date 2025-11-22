@@ -34,7 +34,7 @@ def execute_command(command, description):
         return False, result.stderr
 
 def main():
-    log("=== Déploiement des fichiers source LLMUI Core v0.5.1 ===", "INFO")
+    log("=== Déploiement des fichiers source LLMUI Core v0.5.0 ===", "INFO")
     log(f"Dépôt GitHub: {GITHUB_REPO}", "INFO")
     
     # Clone du dépôt
@@ -112,7 +112,6 @@ def main():
             "Copie requirements.txt"
         )
         
-        # CORRECTIF v0.5.1: Installer UNIQUEMENT les dépendances additionnelles
         log("📦 Vérification et installation des dépendances additionnelles...", "INFO")
         
         # Lire requirements.txt pour voir ce qui manque
