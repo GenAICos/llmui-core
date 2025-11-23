@@ -1,5 +1,5 @@
 /**
- * LLMUI Session Guard
+ * LLMUI Session Guard v0.5.0
  * Protects the main interface and handles authentication state
  * Include this script at the top of index.html
  */
