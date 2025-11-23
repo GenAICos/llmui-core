@@ -1,6 +1,6 @@
 #!/bin/bash
 # Script d'initialisation Git et préparation GitHub
-# LLMUI Core v2.0
+# LLMUI Core v0.5.0
 
 cd ~/Bureau/projet/llmui-core
 
@@ -60,9 +60,9 @@ echo "📝 Étape 3: Premier commit..."
 git add .
 echo "✅ Fichiers ajoutés"
 
-git commit -m "Initial commit - LLMUI Core v2.0.0
+git commit -m "Initial commit - LLMUI Core v0.5.0.0
 
-🎉 Premier commit du projet LLMUI Core v2.0
+🎉 Premier commit du projet LLMUI Core v0.5.0
 
 ✨ Fonctionnalités:
 - Mode Simple: Conversation directe avec un LLM
@@ -125,6 +125,6 @@ echo ""
 echo "3️⃣  Ajouter les topics sur GitHub:"
 echo "   llm, ollama, ai, consensus, fastapi, python, i18n, sqlite"
 echo ""
-echo "4️⃣  Créer la release v2.0.0"
+echo "4️⃣  Créer la release v0.5.0.0"
 echo ""
 echo "═══════════════════════════════════════════════════════════"
