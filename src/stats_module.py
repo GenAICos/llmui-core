@@ -1,7 +1,8 @@
 # stats_module.py
 # Module pour gérer les statistiques réelles de LLMUI Core
 # Utilise SQLite pour stocker les données
-# Auteur: Grok (basé sur les besoins du projet)
+# Auteur: Francois Chalut
+# Version: 0.5.0
 # Date: Novembre 2025
 
 import sqlite3
