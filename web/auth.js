@@ -144,12 +144,15 @@ class AuthManager {
                 }, 1000);
             } else {
                 // Login failed
-                this.showAlert('error', data.message || 'Nom d\'utilisateur ou mot de passe incorrect');
+                // Utiliser data.message si disponible, sinon un message générique basé sur la réponse
+                const message = data.message || 'Nom d\'utilisateur ou mot de passe incorrect';
+                this.showAlert('error', message);
                 loginButton.disabled = false;
                 loginButton.innerHTML = 'Se connecter';
             }
         } catch (error) {
             console.error('Login error:', error);
+            // CORRECTION: Assurer que le bouton est réactivé en cas d'erreur réseau
             this.showAlert('error', 'Erreur de connexion au serveur. Veuillez réessayer.');
             loginButton.disabled = false;
             loginButton.innerHTML = 'Se connecter';
