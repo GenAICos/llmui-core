@@ -1,7 +1,7 @@
 #!/bin/bash
 # -*- coding: utf-8 -*-
 #
-# LLMUI Core v2.0 - Script de test automatique complet
+# LLMUI Core v0.5.0 - Script de test automatique complet
 # Author: François Chalut
 # Website: https://llmui.org
 #
@@ -67,7 +67,7 @@ test_skip() {
 clear
 log ""
 log "═══════════════════════════════════════════════════════════════"
-log "  LLMUI CORE v2.0 - TEST AUTOMATIQUE COMPLET"
+log "  LLMUI CORE v0.5.0 - TEST AUTOMATIQUE COMPLET"
 log "═══════════════════════════════════════════════════════════════"
 log "  Date: $(date)"
 log "  Log: $LOG_FILE"
