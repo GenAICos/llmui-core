@@ -1,5 +1,5 @@
 /*
- * LLMUI Core v2.0 - I18n System
+ * LLMUI Core v0.5.0 - I18n System
  * Author: François Chalut
  * Website: https://llmui.org
  */
@@ -40,7 +40,7 @@ const translations = {
         total_messages: "Total messages",
         avg_response_time: "Temps moy. réponse",
         success_rate: "Taux de succès",
-        about_title: "À propos de LLMUI Core v2.0",
+        about_title: "À propos de LLMUI Core v0.5.0",
         features_title: "Fonctionnalités",
         feature_simple: "Mode Simple : Conversation directe avec un LLM",
         feature_consensus: "Mode Consensus : Fusion intelligente de plusieurs modèles",
@@ -142,7 +142,7 @@ const translations = {
         total_messages: "Total messages",
         avg_response_time: "Avg. response time",
         success_rate: "Success rate",
-        about_title: "About LLMUI Core v2.0",
+        about_title: "About LLMUI Core v0.5.0",
         features_title: "Features",
         feature_simple: "Simple Mode: Direct conversation with one LLM",
         feature_consensus: "Consensus Mode: Intelligent fusion of multiple models",
