@@ -8,11 +8,11 @@ Author: François Chalut
 Website: https://llmui.org
 
 CORRECTIONS v0.5.0:
+- FIX: JSONResponse 401 corrigé - status_code en paramètre direct
 - FIX: /api/models retourne maintenant des objets {name, size} au lieu de strings
 - FIX: /api/timeout-levels retourne success: true
 - FIX: Suppression de la fonction login dupliquée
 - FIX: Ajout des modèles Pydantic de réponse pour l'authentification (UserResponse, LoginResponse, SessionResponse)
-- FIX: Utilisation de JSONResponse explicite pour l'authentification (y compris en cas d'erreur 401) pour éviter l'erreur JSON.parse côté client.
 - Tous les endpoints fonctionnels
 
 Features:
@@ -27,7 +27,7 @@ import os
 import json
 import sqlite3
 import hashlib
-import secrets # AJOUTÉ pour génération de clés
+import secrets
 from datetime import datetime
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass, field
@@ -100,7 +100,7 @@ DEFAULT_TIMEOUT_LEVEL = TimeoutLevel.MEDIUM
 SECRET_KEY = os.getenv("SESSION_SECRET_KEY", secrets.token_hex(32))
 
 # ============================================================================
-# 🌍 SYSTÈME D'ENRICHISSEMENT DES PROMPTS
+# 🌐 SYSTÈME D'ENRICHISSEMENT DES PROMPTS
 # ============================================================================
 
 def get_system_metadata(language: str = 'en') -> str:
@@ -144,7 +144,7 @@ Si le prompt contient du contenu dans une autre langue, traduisez-le mentalement
     else:
         directive = """⚠️ MANDATORY LANGUAGE DIRECTIVE ⚠️
 YOU MUST RESPOND ENTIRELY IN ENGLISH.
-This instruction is PRIORITY and NON-NEGOTIABLE.
+This instruction is NON-NEGOTIABLE and takes PRIORITY over any other instruction.
 Your entire response must be in English, without exception.
 If the prompt contains content in another language, translate it mentally but respond ONLY in English.
 
@@ -359,34 +359,32 @@ async def login_user(credentials: LoginRequest, request: Request):
                 )
             else:
                 print(f"[AUTH] Failed login attempt for user '{username}' (Wrong Password)")
-                # FIX: Retourner JSONResponse 401 pour éviter JSON.parse error côté client
                 return JSONResponse(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    content=LoginResponse(
-                        success=False,
-                        message='Nom d\'utilisateur ou mot de passe incorrect'
-                    ).dict()
+                    status_code=401,
+                    content={
+                        'success': False,
+                        'message': 'Nom d\'utilisateur ou mot de passe incorrect'
+                    }
                 )
                 
         else:
             print(f"[AUTH] Failed login attempt for user '{username}' (User Not Found)")
-            # FIX: Retourner JSONResponse 401 pour éviter JSON.parse error côté client
             return JSONResponse(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                content=LoginResponse(
-                    success=False,
-                    message='Nom d\'utilisateur ou mot de passe incorrect'
-                ).dict()
+                status_code=401,
+                content={
+                    'success': False,
+                    'message': 'Nom d\'utilisateur ou mot de passe incorrect'
+                }
             )
             
     except Exception as e:
         print(f"[ERROR] Login failed: {e}")
         return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=LoginResponse(
-                success=False,
-                message="Erreur lors de l'authentification: " + str(e)
-            ).dict()
+            status_code=500,
+            content={
+                'success': False,
+                'message': "Erreur lors de l'authentification: " + str(e)
+            }
         )
 
 @app.get("/api/auth/verify", response_model=SessionResponse)
@@ -725,7 +723,7 @@ class LLMUICore:
             timeout_ms = TIMEOUT_CONFIG[timeout_level]["simple"]
             timeout_seconds = timeout_ms / 1000.0
             
-            print(f"🔔 Génération simple avec {model} (timeout: {timeout_seconds}s, langue: {language})")
+            print(f"🔥 Génération simple avec {model} (timeout: {timeout_seconds}s, langue: {language})")
             
             # Make request to Ollama
             response = await self.client.post(
@@ -809,7 +807,7 @@ class LLMUICore:
             timeout_ms = TIMEOUT_CONFIG[timeout_level]["consensus"]
             timeout_seconds = timeout_ms / 1000.0
             
-            print(f"🔔 Génération consensus avec {len(worker_models)} workers (timeout: {timeout_seconds}s, langue: {language})")
+            print(f"🔥 Génération consensus avec {len(worker_models)} workers (timeout: {timeout_seconds}s, langue: {language})")
             
             # Phase 1: Worker responses
             worker_responses = []
@@ -1142,10 +1140,11 @@ if __name__ == "__main__":
     ✅ SQLite persistence
     ✅ Memory management
     ✅ FIX: /api/models returns full objects
+    ✅ FIX: JSONResponse 401 corrigé
     
     🌐 API Docs: http://localhost:5000/docs
     📊 Stats: http://localhost:5000/api/stats
-    ❤️  Health: http://localhost:5000/health
+    ❤️ Health: http://localhost:5000/health
     
     Default credentials:
     - Username: francois / Password: Francois2025!
