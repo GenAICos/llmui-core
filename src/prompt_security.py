@@ -6,7 +6,7 @@ Protects against prompt injection, jailbreaking, and model poisoning
 
 Author: François Chalut
 Website: https://llmui.org
-Version: 2.0.0
+Version: 0.5.0
 
 PROTECTIONS:
 - Prompt injection detection
