@@ -1,9 +1,9 @@
 /*
- * LLMUI Core v2.0.2 - Main App Logic
+ * LLMUI Core v0.5.0 - Main App Logic
  * Author: Francois Chalut
  * Website: https://llmui.org
  * 
- * CORRECTIONS v2.0.2:
+ * CORRECTIONS v0.5.0:
  * - FIX: Extraction correcte des noms de modèles depuis les objets
  * - FIX: Gestion robuste des endpoints API manquants avec fallbacks
  * - FIX: Valeurs par défaut pour timeoutLevels
