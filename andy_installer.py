@@ -13,6 +13,8 @@ NOUVEAUTÉS v0.5.0:
 - Installation complète en une seule exécution
 - Gestion automatique de toutes les dépendances
 - Déploiement des sources inclus
+- Détection et résolution des problèmes Python 3.13
+- Installation automatique de Python 3.11/3.12 si nécessaire
 ==============================================================================
 """
 
@@ -43,6 +45,7 @@ class Andy:
         self.llm_model = "qwen2.5:3b"
         self.github_repo = GITHUB_REPO
         self.max_retries = 20
+        self.python_cmd = "python3"  # Commande Python à utiliser
         
     def call_ollama(self, prompt, max_tokens=500):
         """Appelle Ollama pour analyser et résoudre des problèmes"""
@@ -82,10 +85,174 @@ class Andy:
             self.log(f"Impossible de contacter Ollama: {e}", "WARNING")
             return None
     
+    def detect_python_compilation_issue(self, error_message):
+        """Détecte si l'erreur est liée à une incompatibilité Python 3.13"""
+        python_313_indicators = [
+            "ForwardRef._evaluate() missing 1 required keyword-only argument: 'recursive_guard'",
+            "pydantic-core",
+            "maturin failed",
+            "Failed building wheel",
+            "Py_3_13",
+            "generate_self_schema.py"
+        ]
+        
+        indicators_found = sum(1 for indicator in python_313_indicators if indicator in error_message)
+        return indicators_found >= 2
+    
+    def get_available_python_versions(self):
+        """Détecte les versions de Python disponibles sur le système"""
+        versions = []
+        for cmd in ["python3.11", "python3.12", "python3.10", "python3"]:
+            success, output = self.execute_command(f"{cmd} --version 2>&1", f"Détection {cmd}")
+            if success and output:
+                version_match = re.search(r'Python (\d+\.\d+)', output)
+                if version_match:
+                    version = version_match.group(1)
+                    versions.append((cmd, version))
+        return versions
+    
+    def install_python_version(self, target_version="3.12"):
+        """Installe une version spécifique de Python"""
+        self.log(f"🐍 Installation de Python {target_version}...", "INFO")
+        
+        pkg_manager = self.detect_package_manager()
+        
+        if pkg_manager == "apt":
+            # Ajouter le PPA deadsnakes pour Python
+            self.execute_command(
+                "sudo apt-get update",
+                "Update apt",
+                2
+            )
+            self.execute_command(
+                "sudo apt-get install -y software-properties-common",
+                "Installation software-properties-common",
+                2
+            )
+            self.execute_command(
+                "sudo add-apt-repository -y ppa:deadsnakes/ppa",
+                "Ajout PPA deadsnakes",
+                2
+            )
+            self.execute_command(
+                "sudo apt-get update",
+                "Update apt avec PPA",
+                2
+            )
+            
+            # Installer Python et les outils nécessaires
+            success, _ = self.execute_command(
+                f"sudo apt-get install -y python{target_version} python{target_version}-venv python{target_version}-dev",
+                f"Installation Python {target_version}",
+                2
+            )
+            
+            if success:
+                self.python_cmd = f"python{target_version}"
+                self.log(f"✅ Python {target_version} installé avec succès", "SUCCESS")
+                return True
+            else:
+                self.log(f"❌ Échec installation Python {target_version}", "ERROR")
+                return False
+                
+        elif pkg_manager in ["dnf", "yum"]:
+            success, _ = self.execute_command(
+                f"sudo {pkg_manager} install -y python{target_version.replace('.', '')} python{target_version.replace('.', '')}-devel",
+                f"Installation Python {target_version}",
+                2
+            )
+            
+            if success:
+                self.python_cmd = f"python{target_version}"
+                self.log(f"✅ Python {target_version} installé avec succès", "SUCCESS")
+                return True
+            else:
+                self.log(f"❌ Échec installation Python {target_version}", "ERROR")
+                return False
+        
+        return False
+    
+    def recreate_venv_with_compatible_python(self):
+        """Recrée le venv avec une version compatible de Python"""
+        self.log("🔄 Recréation du venv avec Python compatible...", "INFO")
+        
+        # Supprimer l'ancien venv
+        self.execute_command(
+            "sudo rm -rf /opt/llmui-core/venv",
+            "Suppression ancien venv",
+            5
+        )
+        
+        # Créer le nouveau venv avec la version de Python choisie
+        success, _ = self.execute_command(
+            f"cd /opt/llmui-core && {self.python_cmd} -m venv venv",
+            f"Création venv avec {self.python_cmd}",
+            5,
+            critical=True
+        )
+        
+        if not success:
+            return False
+        
+        # Upgrade pip
+        self.execute_command(
+            "cd /opt/llmui-core && venv/bin/pip install --upgrade pip",
+            "Upgrade pip",
+            5
+        )
+        
+        # Fixer les permissions
+        self.execute_command(
+            "sudo chown -R llmui:llmui /opt/llmui-core/venv",
+            "Permissions venv",
+            5
+        )
+        
+        self.log(f"✅ Venv recréé avec {self.python_cmd}", "SUCCESS")
+        return True
+    
     def fix_requirements_txt(self, error_message, requirements_path="/opt/llmui-core/requirements.txt"):
         """Analyse l'erreur pip et corrige requirements.txt automatiquement"""
         
         self.log("🔧 Andy analyse l'erreur de dépendances...", "INFO")
+        
+        # Détecter si c'est un problème de compilation Python 3.13
+        is_python_313_issue = self.detect_python_compilation_issue(error_message)
+        
+        if is_python_313_issue:
+            self.log("⚠️ Problème de compilation détecté avec Python 3.13", "WARNING")
+            self.log("💡 Andy recommande d'utiliser Python 3.11 ou 3.12", "INFO")
+            
+            # Chercher une version compatible
+            available_versions = self.get_available_python_versions()
+            self.log(f"🔍 Versions Python disponibles: {available_versions}", "INFO")
+            
+            # Préférer 3.12, puis 3.11, puis 3.10
+            compatible_version = None
+            for cmd, version in available_versions:
+                if version in ["3.12", "3.11", "3.10"]:
+                    compatible_version = (cmd, version)
+                    break
+            
+            if compatible_version:
+                self.log(f"✅ Version compatible trouvée: {compatible_version[1]}", "SUCCESS")
+                self.python_cmd = compatible_version[0]
+                
+                # Recréer le venv avec la bonne version
+                if self.recreate_venv_with_compatible_python():
+                    self.log("✅ Venv recréé avec succès", "SUCCESS")
+                    return True
+            else:
+                self.log("⚠️ Aucune version Python compatible trouvée", "WARNING")
+                self.log("🔧 Andy va tenter d'installer Python 3.12...", "INFO")
+                
+                if self.install_python_version("3.12"):
+                    if self.recreate_venv_with_compatible_python():
+                        self.log("✅ Venv recréé avec Python 3.12", "SUCCESS")
+                        return True
+                else:
+                    self.log("❌ Impossible d'installer Python 3.12", "ERROR")
+                    self.log("💡 Tentative de correction du requirements.txt...", "INFO")
         
         # Détecter la version de Python
         python_version = sys.version.split()[0]
@@ -99,39 +266,53 @@ class Andy:
             self.log(f"Impossible de lire requirements.txt: {e}", "ERROR")
             return False
         
-        # Construire le prompt pour Ollama
-        prompt = f"""You are Andy, a DevOps AI assistant. A Python package installation failed.
+        # Construire le prompt amélioré pour Ollama
+        prompt = f"""You are Andy, a DevOps AI assistant. A Python package installation failed due to compilation errors.
 
-PYTHON VERSION: {python_version}
+CRITICAL CONTEXT:
+- Python Version: {python_version}
+- Error Type: {"Python 3.13 compilation issue with Rust/pydantic-core" if is_python_313_issue else "Package dependency conflict"}
 
-ERROR MESSAGE:
-{error_message[:2000]}
+ERROR MESSAGE (last 2000 chars):
+{error_message[-2000:]}
 
 CURRENT requirements.txt:
 {current_requirements}
 
-ANALYSIS NEEDED:
-1. Identify the root cause (version conflict, Python incompatibility, compilation error)
-2. If Python 3.13 incompatibility: upgrade package versions
-3. If compilation error (pydantic-core, etc): use newer versions with pre-built wheels
-4. If version conflict: adjust constraints
+ANALYSIS STRATEGY:
 
-OUTPUT FORMAT - Only provide fixes in this exact format:
+1. IF Python 3.13 compilation error (ForwardRef._evaluate, pydantic-core, maturin):
+   SOLUTION: Upgrade to latest versions with pre-built wheels
+   - pydantic>=2.10.0 (has Python 3.13 wheels)
+   - pydantic-core>=2.27.0 (has Python 3.13 wheels)
+   - pydantic-settings>=2.7.0
+   - fastapi>=0.115.0
+   - starlette>=0.41.0
+   
+   ALTERNATIVE: Use Python 3.11 or 3.12 instead (Andy can install it)
+
+2. IF torch/torchvision version conflict:
+   - torch>=2.5.0
+   - torchvision>=0.20.0
+
+3. IF other package conflicts:
+   - Identify conflicting versions
+   - Use >= instead of == for flexibility
+   - Remove upper bounds (<) that cause conflicts
+
+OUTPUT FORMAT - Provide ONLY fixes in this exact format:
 
 FIXES:
-package==old.version -> package>=new.version
+old_package_line -> new_package_line
 
-Common fixes for Python 3.13:
-- pydantic==2.5.0 -> pydantic>=2.10.0
-- pydantic-settings==2.1.0 -> pydantic-settings>=2.7.0
-- fastapi==0.104.1 -> fastapi>=0.115.0
-- starlette==0.27.0 -> starlette>=0.41.0
+Example:
+pydantic==2.5.0 -> pydantic>=2.10.0
+pydantic-core==2.14.1 -> pydantic-core>=2.27.0
 
-For torch/torchvision version conflicts:
-- torch>=2.0.1,<2.2.0 -> torch>=2.5.0
-- torchvision>=0.15.2,<0.17.0 -> torchvision>=0.20.0
+PYTHON_RECOMMENDATION:
+[If Python 3.13 issue] Recommend installing Python 3.11 or 3.12
 
-Now provide ONLY the fixes needed:"""
+Now analyze and provide fixes:"""
 
         # Appeler Ollama
         response = self.call_ollama(prompt, max_tokens=1000)
@@ -139,26 +320,38 @@ Now provide ONLY the fixes needed:"""
         if not response:
             self.log("Andy n'a pas pu analyser l'erreur avec Ollama", "WARNING")
             # Fallback: correction manuelle basique
-            return self.apply_basic_fixes(error_message, requirements_path)
+            return self.apply_basic_fixes(error_message, requirements_path, is_python_313_issue)
         
         self.log(f"💡 Analyse d'Andy:\n{response}", "INFO")
+        
+        # Vérifier si Andy recommande un changement de version Python
+        if "PYTHON_RECOMMENDATION" in response and "3.11" in response or "3.12" in response:
+            self.log("💡 Andy recommande d'utiliser Python 3.11 ou 3.12", "INFO")
         
         # Parser la réponse pour extraire les corrections
         fixes = []
         lines = response.split('\n')
+        in_fixes_section = False
+        
         for line in lines:
-            if '->' in line:
+            if 'FIXES:' in line:
+                in_fixes_section = True
+                continue
+            
+            if in_fixes_section and '->' in line:
                 parts = line.split('->')
                 if len(parts) == 2:
                     old_line = parts[0].strip()
                     new_line = parts[1].strip()
                     # Nettoyer les lignes
-                    old_line = old_line.replace('FIXES:', '').strip()
-                    fixes.append((old_line, new_line))
+                    old_line = re.sub(r'^[-\*\s]+', '', old_line)
+                    new_line = re.sub(r'^[-\*\s]+', '', new_line)
+                    if old_line and new_line:
+                        fixes.append((old_line, new_line))
         
         if not fixes:
             self.log("Andy n'a pas trouvé de corrections dans la réponse", "WARNING")
-            return self.apply_basic_fixes(error_message, requirements_path)
+            return self.apply_basic_fixes(error_message, requirements_path, is_python_313_issue)
         
         # Appliquer les corrections
         self.log(f"🔨 Application de {len(fixes)} corrections...", "INFO")
@@ -197,7 +390,7 @@ Now provide ONLY the fixes needed:"""
             self.log(f"Erreur lors de la sauvegarde: {e}", "ERROR")
             return False
     
-    def apply_basic_fixes(self, error_message, requirements_path):
+    def apply_basic_fixes(self, error_message, requirements_path, is_python_313_issue=False):
         """Applique des corrections basiques sans Ollama"""
         self.log("🔧 Application de corrections basiques...", "INFO")
         
@@ -207,13 +400,13 @@ Now provide ONLY the fixes needed:"""
             
             original_content = content
             
-            # Corrections connues pour Python 3.13
-            python_version = sys.version_info
-            if python_version >= (3, 13):
-                self.log("Python 3.13 détecté - application de corrections spécifiques", "INFO")
+            # Corrections spécifiques Python 3.13
+            if is_python_313_issue:
+                self.log("Python 3.13 - corrections pour pydantic-core et compilation Rust", "INFO")
                 
                 fixes = [
                     ("pydantic==2.5.0", "pydantic>=2.10.0"),
+                    ("pydantic-core==2.14.1", "pydantic-core>=2.27.0"),
                     ("pydantic-settings==2.1.0", "pydantic-settings>=2.7.0"),
                     ("fastapi==0.104.1", "fastapi>=0.115.0"),
                     ("starlette==0.27.0", "starlette>=0.41.0"),
@@ -223,6 +416,26 @@ Now provide ONLY the fixes needed:"""
                     if old in content:
                         content = content.replace(old, new)
                         self.log(f"  ✅ {old} → {new}", "SUCCESS")
+            
+            # Détection et correction générale pour les versions
+            python_version = sys.version_info
+            if python_version >= (3, 13):
+                self.log("Python 3.13+ détecté - application de corrections générales", "INFO")
+                
+                # Patterns à remplacer pour Python 3.13
+                patterns = [
+                    (r'pydantic==[\d\.]+', 'pydantic>=2.10.0'),
+                    (r'pydantic-core==[\d\.]+', 'pydantic-core>=2.27.0'),
+                    (r'pydantic-settings==[\d\.]+', 'pydantic-settings>=2.7.0'),
+                    (r'fastapi==[\d\.]+', 'fastapi>=0.115.0'),
+                    (r'starlette==[\d\.]+', 'starlette>=0.41.0'),
+                ]
+                
+                for pattern, replacement in patterns:
+                    new_content = re.sub(pattern, replacement, content)
+                    if new_content != content:
+                        self.log(f"  ✅ Pattern {pattern} → {replacement}", "SUCCESS")
+                        content = new_content
             
             # Correction pour torch/torchvision version conflicts
             if "torchvision" in error_message.lower() or "torch" in error_message.lower():
@@ -378,12 +591,19 @@ Now provide ONLY the fixes needed:"""
     
     def check_python_version(self):
         """Vérifie la version de Python"""
-        success, output = self.execute_command("python3 --version", "Vérification Python")
+        success, output = self.execute_command(f"{self.python_cmd} --version", "Vérification Python")
         if success:
             version = output.strip().split()[1]
             major, minor = map(int, version.split('.')[:2])
+            
+            self.log(f"Python {version} détecté", "INFO")
+            
             if major >= 3 and minor >= 8:
-                self.log(f"Python {version} OK", "SUCCESS")
+                if minor == 13:
+                    self.log(f"⚠️ Python 3.13 détecté - peut causer des problèmes de compilation", "WARNING")
+                    self.log(f"💡 Andy peut installer Python 3.11 ou 3.12 si nécessaire", "INFO")
+                else:
+                    self.log(f"✅ Python {version} OK", "SUCCESS")
                 return True
             else:
                 self.log(f"Python {version} trop ancien (requis >= 3.8)", "ERROR")
@@ -455,7 +675,7 @@ Now provide ONLY the fixes needed:"""
         # Pull des modèles - MAINTENANT Ollama devrait être prêt
         models = ["phi3:3.8b", "gemma2:2b", "granite4:micro-h", "qwen2.5:3b"]
         for model in models:
-            self.log(f"🔥 Téléchargement du modèle {model}...", "INFO")
+            self.log(f"📥 Téléchargement du modèle {model}...", "INFO")
             success, output = self.execute_command(
                 f"ollama pull {model}",
                 f"Pull modèle {model}",
@@ -745,23 +965,30 @@ Now provide ONLY the fixes needed:"""
             
             self.log("📦 Installation des dépendances additionnelles depuis requirements.txt...", "INFO")
             
-            # Installation des dépendances avec gestion d'erreurs
-            success, error = self.execute_command(
-                "/opt/llmui-core/venv/bin/pip install -r /opt/llmui-core/requirements.txt --upgrade",
-                "Installation dépendances additionnelles",
-                11
-            )
+            # Tentative d'installation avec gestion des erreurs de compilation
+            retry_count = 0
+            max_retries = 3
             
-            if not success:
-                self.log("⚠️ Erreur lors de l'installation des dépendances", "WARNING")
-                # Tentative de correction automatique
-                if self.fix_requirements_txt(error):
-                    self.log("🔧 Nouvelle tentative après correction...", "INFO")
-                    self.execute_command(
-                        "/opt/llmui-core/venv/bin/pip install -r /opt/llmui-core/requirements.txt --upgrade",
-                        "Ré-installation après correction",
-                        11
-                    )
+            while retry_count < max_retries:
+                success, error = self.execute_command(
+                    "/opt/llmui-core/venv/bin/pip install -r /opt/llmui-core/requirements.txt --upgrade",
+                    f"Installation dépendances (tentative {retry_count + 1})",
+                    11
+                )
+                
+                if success:
+                    self.log("✅ Dépendances installées avec succès", "SUCCESS")
+                    break
+                else:
+                    self.log(f"⚠️ Erreur lors de l'installation (tentative {retry_count + 1}/{max_retries})", "WARNING")
+                    
+                    # Tentative de correction
+                    if self.fix_requirements_txt(error):
+                        self.log("🔧 Corrections appliquées, nouvelle tentative...", "INFO")
+                        retry_count += 1
+                    else:
+                        self.log("❌ Impossible de corriger automatiquement", "ERROR")
+                        break
         
         # Créer le dossier logs s'il n'existe pas
         self.execute_command(
@@ -770,7 +997,7 @@ Now provide ONLY the fixes needed:"""
             11
         )
         
-        # Copier config_yaml.example vers config.yaml s'il n'existe pas déjà
+        # Copier config_yaml.example vers config.yaml s'il n'existe pas déjà 
         if not os.path.exists("/opt/llmui-core/config.yaml"):
             if os.path.exists("/opt/llmui-core/config_yaml.example"):
                 self.execute_command(
@@ -856,7 +1083,7 @@ Now provide ONLY the fixes needed:"""
         if pkg_manager == "apt":
             self.execute_command("sudo apt-get update", "Update apt", 2)
             self.execute_command(
-                "sudo apt-get install -y python3-pip python3-venv nginx git curl sqlite3 build-essential python3-dev",
+                "sudo apt-get install -y python3-pip python3-venv nginx git curl sqlite3 build-essential python3-dev software-properties-common",
                 "Installation paquets",
                 2,
                 critical=True
@@ -894,13 +1121,17 @@ Now provide ONLY the fixes needed:"""
         # Étape 5b: Installation Python venv et dépendances CRITIQUES
         self.log("=== ÉTAPE 5b: Installation environnement Python ===", "INFO")
         
-        # Créer le venv
-        self.execute_command(
-            "cd /opt/llmui-core && python3 -m venv venv",
+        # Créer le venv avec la commande Python appropriée
+        success, _ = self.execute_command(
+            f"cd /opt/llmui-core && {self.python_cmd} -m venv venv",
             "Création venv",
             5,
             critical=True
         )
+        
+        if not success:
+            self.log("❌ Échec création venv", "ERROR")
+            return False
         
         # Upgrade pip
         self.execute_command(
@@ -1237,6 +1468,12 @@ server {
             time.sleep(5)  # Attendre que le backend soit prêt
         else:
             self.log("❌ Échec démarrage backend", "ERROR")
+            self.log("💡 Vérification des logs...", "INFO")
+            self.execute_command(
+                "sudo journalctl -u llmui-backend -n 50 --no-pager",
+                "Logs backend",
+                12
+            )
             return False
         
         # Start proxy
@@ -1376,6 +1613,7 @@ def main():
                 print(f"   sudo systemctl status llmui-backend")
                 print(f"   sudo systemctl status llmui-proxy")
                 print(f"   sudo journalctl -u llmui-backend -f")
+                print(f"\n💡 Version Python utilisée: {andy.python_cmd}")
                 print("="*70)
                 return 0
             else:
@@ -1401,5 +1639,3 @@ if __name__ == "__main__":
         print("Ce script doit être exécuté en tant que root (sudo)")
         sys.exit(1)
     sys.exit(main())
-
-                
