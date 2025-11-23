@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
 """
 ==============================================================================
-Andy - Assistant DevOps Autonome v0.5.0
-Installation automatisée de LLMUI Core
+Andy - Assistant DevOps Autonome v0.6.0
+Installation automatisée COMPLÈTE de LLMUI Core
 ==============================================================================
 Auteur: Francois Chalut
 Date: 2025-11-22
 Licence: AGPLv3 + common clause
 
+NOUVEAUTÉS v0.6.0:
+- Merge complet de andy_deploy_source.py dans andy_installer.py
+- Installation complète en une seule exécution
+- Gestion automatique de toutes les dépendances
+- Déploiement des sources inclus
+==============================================================================
 """
 
 import subprocess
@@ -18,6 +24,7 @@ import json
 import hashlib
 import uuid
 import re
+import shutil
 from datetime import datetime
 from pathlib import Path
 import getpass
@@ -154,7 +161,7 @@ Now provide ONLY the fixes needed:"""
             return self.apply_basic_fixes(error_message, requirements_path)
         
         # Appliquer les corrections
-        self.log(f"📝 Application de {len(fixes)} corrections...", "INFO")
+        self.log(f"🔨 Application de {len(fixes)} corrections...", "INFO")
         updated_requirements = current_requirements
         
         for old_line, new_line in fixes:
@@ -415,11 +422,11 @@ Now provide ONLY the fixes needed:"""
             )
         
         # ⏰ ATTENTE CRITIQUE - Ollama a besoin de temps pour démarrer
-        self.log("⏳ Attente de 30 secondes pour le démarrage complet d'Ollama...", "INFO")
-        for i in range(30):
+        self.log("⏳ Attente de 60 secondes pour le démarrage complet d'Ollama...", "INFO")
+        for i in range(60):
             time.sleep(1)
-            if i % 1 == 0:  # Afficher un message toutes les 10 secondes
-                self.log(f"⏰ Attente Ollama... {30-i} secondes restantes", "INFO")
+            if i % 10 == 0:  # Afficher un message toutes les 10 secondes
+                self.log(f"⏰ Attente Ollama... {60-i} secondes restantes", "INFO")
         
         # Vérification que Ollama répond
         self.log("Vérification qu'Ollama est opérationnel...", "INFO")
@@ -446,9 +453,9 @@ Now provide ONLY the fixes needed:"""
             return False
         
         # Pull des modèles - MAINTENANT Ollama devrait être prêt
-        models = ["phi3:3.8b", "gemma2:2b", "granite4:micro-h", "qwen2.5:3b"]
+        models = ["phi3:3.8b", "gemma2:2b", "granite3.1:2b", "qwen2.5:3b"]
         for model in models:
-            self.log(f"📥 Téléchargement du modèle {model}...", "INFO")
+            self.log(f"🔥 Téléchargement du modèle {model}...", "INFO")
             success, output = self.execute_command(
                 f"ollama pull {model}",
                 f"Pull modèle {model}",
@@ -505,7 +512,7 @@ Now provide ONLY the fixes needed:"""
     def get_user_credentials(self):
         """Demande les identifiants utilisateur pour LLMUI"""
         print("\n" + "="*60)
-        print("🔑 Configuration utilisateur LLMUI Interface")
+        print("🔐 Configuration utilisateur LLMUI Interface")
         print("="*60)
         username = input("Nom d'utilisateur pour l'interface web [admin]: ").strip() or "admin"
         
@@ -535,7 +542,6 @@ Now provide ONLY the fixes needed:"""
     def init_database_with_user(self, username, password_hash):
         """
         Initialise la base de données avec le schéma EXACT de llmui_backend.py
-        CORRECTIF v0.5.0: Schéma compatible avec processing_time
         """
         db_path = "/var/lib/llmui/llmui.db"
         
@@ -651,10 +657,187 @@ Now provide ONLY the fixes needed:"""
         self.log(f"Utilisateur '{username}' créé avec succès", "SUCCESS")
         self.log("✅ Base de données initialisée avec schéma compatible llmui_backend.py", "SUCCESS")
     
+    def deploy_source_files(self):
+        """Déploie les fichiers source depuis GitHub"""
+        self.log("=== DÉPLOIEMENT DES SOURCES DEPUIS GITHUB ===", "INFO")
+        
+        temp_dir = "/tmp/llmui-source"
+        
+        # Nettoyage du répertoire temporaire
+        if os.path.exists(temp_dir):
+            self.log("Nettoyage du répertoire temporaire...", "INFO")
+            shutil.rmtree(temp_dir)
+        
+        # Clone du dépôt
+        success, _ = self.execute_command(
+            f"git clone {self.github_repo} {temp_dir}",
+            "Clonage dépôt GitHub",
+            11
+        )
+        
+        if not success:
+            self.log("Échec du clonage du dépôt", "ERROR")
+            self.log("⚠️ Vérifiez votre connexion internet et l'accès à GitHub", "WARNING")
+            return False
+        
+        # Copie des fichiers
+        self.log("📦 Copie des fichiers source vers /opt/llmui-core/...", "INFO")
+        
+        # Copie du répertoire src
+        if os.path.exists(f"{temp_dir}/src"):
+            self.execute_command(
+                f"sudo cp -r {temp_dir}/src /opt/llmui-core/",
+                "Copie répertoire src",
+                11
+            )
+        else:
+            self.log("⚠️ Répertoire src/ non trouvé dans le dépôt", "WARNING")
+        
+        # Copie du répertoire web
+        if os.path.exists(f"{temp_dir}/web"):
+            self.execute_command(
+                f"sudo cp -r {temp_dir}/web /opt/llmui-core/",
+                "Copie répertoire web",
+                11
+            )
+        else:
+            self.log("⚠️ Répertoire web/ non trouvé dans le dépôt", "WARNING")
+        
+        # Copie du répertoire scripts
+        if os.path.exists(f"{temp_dir}/scripts"):
+            self.execute_command(
+                f"sudo cp -r {temp_dir}/scripts /opt/llmui-core/",
+                "Copie répertoire scripts",
+                11
+            )
+        
+        # Copie config.yaml.example
+        if os.path.exists(f"{temp_dir}/config.yaml.example"):
+            if os.path.exists("/opt/llmui-core/config.yaml"):
+                self.execute_command(
+                    f"sudo cp {temp_dir}/config.yaml.example /opt/llmui-core/config.yaml.example",
+                    "Copie config.yaml.example (config.yaml existe déjà)",
+                    11
+                )
+            else:
+                self.execute_command(
+                    f"sudo cp {temp_dir}/config.yaml.example /opt/llmui-core/config.yaml",
+                    "Copie config.yaml depuis example",
+                    11
+                )
+        
+        # Copie config_yaml.example si présent
+        if os.path.exists(f"{temp_dir}/config_yaml.example"):
+            if not os.path.exists("/opt/llmui-core/config.yaml"):
+                self.execute_command(
+                    f"sudo cp {temp_dir}/config_yaml.example /opt/llmui-core/config.yaml",
+                    "Copie config_yaml.example vers config.yaml",
+                    11
+                )
+        
+        # Copie requirements.txt si présent et installation des dépendances
+        if os.path.exists(f"{temp_dir}/requirements.txt"):
+            self.execute_command(
+                f"sudo cp {temp_dir}/requirements.txt /opt/llmui-core/",
+                "Copie requirements.txt",
+                11
+            )
+            
+            self.log("📦 Installation des dépendances additionnelles depuis requirements.txt...", "INFO")
+            
+            # Installation des dépendances avec gestion d'erreurs
+            success, error = self.execute_command(
+                "/opt/llmui-core/venv/bin/pip install -r /opt/llmui-core/requirements.txt --upgrade",
+                "Installation dépendances additionnelles",
+                11
+            )
+            
+            if not success:
+                self.log("⚠️ Erreur lors de l'installation des dépendances", "WARNING")
+                # Tentative de correction automatique
+                if self.fix_requirements_txt(error):
+                    self.log("🔧 Nouvelle tentative après correction...", "INFO")
+                    self.execute_command(
+                        "/opt/llmui-core/venv/bin/pip install -r /opt/llmui-core/requirements.txt --upgrade",
+                        "Ré-installation après correction",
+                        11
+                    )
+        
+        # Créer le dossier logs s'il n'existe pas
+        self.execute_command(
+            "sudo mkdir -p /opt/llmui-core/logs",
+            "Création répertoire logs",
+            11
+        )
+        
+        # Copier config_yaml.example vers config.yaml s'il n'existe pas déjà
+        if not os.path.exists("/opt/llmui-core/config.yaml"):
+            if os.path.exists("/opt/llmui-core/config_yaml.example"):
+                self.execute_command(
+                    "sudo cp /opt/llmui-core/config_yaml.example /opt/llmui-core/config.yaml",
+                    "Création config.yaml depuis config_yaml.example",
+                    11
+                )
+            elif os.path.exists("/opt/llmui-core/config.yaml.example"):
+                self.execute_command(
+                    "sudo cp /opt/llmui-core/config.yaml.example /opt/llmui-core/config.yaml",
+                    "Création config.yaml depuis config.yaml.example",
+                    11
+                )
+        
+        # Ajustement des permissions
+        self.log("🔒 Configuration des permissions...", "INFO")
+        self.execute_command(
+            "sudo chown -R llmui:llmui /opt/llmui-core/src",
+            "Permissions src",
+            11
+        )
+        self.execute_command(
+            "sudo chown -R llmui:llmui /opt/llmui-core/web",
+            "Permissions web",
+            11
+        )
+        self.execute_command(
+            "sudo chown -R llmui:llmui /opt/llmui-core/logs",
+            "Permissions logs",
+            11
+        )
+        self.execute_command(
+            "sudo chown -R llmui:llmui /opt/llmui-core/venv",
+            "Permissions venv",
+            11
+        )
+        
+        if os.path.exists("/opt/llmui-core/config.yaml"):
+            self.execute_command(
+                "sudo chown llmui:llmui /opt/llmui-core/config.yaml",
+                "Permissions config",
+                11
+            )
+            self.execute_command(
+                "sudo chmod 600 /opt/llmui-core/config.yaml",
+                "Chmod config",
+                11
+            )
+        
+        if os.path.exists("/opt/llmui-core/src"):
+            self.execute_command(
+                "sudo chmod +x /opt/llmui-core/src/*.py 2>/dev/null || true",
+                "Scripts exécutables",
+                11
+            )
+        
+        # Nettoyage
+        self.log("🧹 Nettoyage du répertoire temporaire...", "INFO")
+        shutil.rmtree(temp_dir)
+        
+        self.log("✅ Fichiers source déployés avec succès", "SUCCESS")
+        return True
+    
     def run_installation(self):
         """Processus d'installation principal"""
         self.log("="*60, "INFO")
-        self.log("DÉMARRAGE D'ANDY - Installation LLMUI-CORE v0.5.0", "INFO")
+        self.log("DÉMARRAGE D'ANDY - Installation LLMUI-CORE v0.6.0", "INFO")
         self.log("="*60, "INFO")
         
         # Étape 1: Vérification système
@@ -726,6 +909,7 @@ Now provide ONLY the fixes needed:"""
             5
         )
         
+        # Installation des dépendances critiques
         self.log("📦 Installation des dépendances critiques Python...", "INFO")
         
         critical_packages = [
@@ -781,8 +965,18 @@ Now provide ONLY the fixes needed:"""
         self.log("=== ÉTAPE 9: Configuration pare-feu (sécurité) ===", "INFO")
         self.configure_firewall_strict()
         
-        self.log("\n✅ Installation de base terminée avec succès!", "SUCCESS")
-        self.log("⚠️  Prochaine étape: sudo python3 andy_deploy_source.py", "INFO")
+        # Étape 10: Déploiement des sources depuis GitHub
+        self.log("=== ÉTAPE 10: Déploiement des fichiers source ===", "INFO")
+        if not self.deploy_source_files():
+            self.log("⚠️ Échec du déploiement des sources", "WARNING")
+            self.log("Vous devrez peut-être exécuter manuellement:", "INFO")
+            self.log("sudo python3 andy_deploy_source.py", "INFO")
+        
+        # Étape 11: Démarrage des services
+        self.log("=== ÉTAPE 11: Démarrage des services ===", "INFO")
+        self.start_services()
+        
+        self.log("\n✅ Installation COMPLÈTE terminée avec succès!", "SUCCESS")
         
         return True
     
@@ -871,7 +1065,7 @@ WantedBy=multi-user.target
         """Configure Nginx comme reverse proxy"""
         
         nginx_config = """# LLMUI Core - Nginx Configuration
-# Generated by Andy v0.5.0
+# Generated by Andy v0.6.0
 
 server {
     listen 80 default_server;
@@ -885,9 +1079,6 @@ server {
     add_header X-XSS-Protection "1; mode=block" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     
-    # Avertissement - rediriger vers HTTPS en production
-    # return 301 https://$server_name$request_uri;
-
     # Root directory
     root /opt/llmui-core/web;
     index index.html login.html;
@@ -987,63 +1178,173 @@ server {
         # Détection du pare-feu
         if self.execute_command("command -v ufw", "Détection UFW")[0]:
             self.log("Configuration UFW avec règles strictes...", "INFO")
-            self.execute_command("sudo ufw --force enable", "Activation UFW", 8)
-            self.execute_command("sudo ufw default deny incoming", "UFW deny incoming", 8)
-            self.execute_command("sudo ufw default allow outgoing", "UFW allow outgoing", 8)
+            self.execute_command("sudo ufw --force enable", "Activation UFW", 9)
+            self.execute_command("sudo ufw default deny incoming", "UFW deny incoming", 9)
+            self.execute_command("sudo ufw default allow outgoing", "UFW allow outgoing", 9)
             
             # Règles publiques
-            self.execute_command("sudo ufw allow 22/tcp", "UFW allow SSH", 8)
-            self.execute_command("sudo ufw allow 80/tcp", "UFW allow HTTP", 8)
-            self.execute_command("sudo ufw allow 443/tcp", "UFW allow HTTPS", 8)
+            self.execute_command("sudo ufw allow 22/tcp", "UFW allow SSH", 9)
+            self.execute_command("sudo ufw allow 80/tcp", "UFW allow HTTP", 9)
+            self.execute_command("sudo ufw allow 443/tcp", "UFW allow HTTPS", 9)
             
             # Règles localhost only pour ports internes
-            self.execute_command("sudo ufw allow from 127.0.0.1 to any port 5000 proto tcp", "UFW backend localhost only", 8)
-            self.execute_command("sudo ufw allow from 127.0.0.1 to any port 8080 proto tcp", "UFW proxy localhost only", 8)
-            self.execute_command("sudo ufw allow from 127.0.0.1 to any port 11434 proto tcp", "UFW Ollama localhost only", 8)
+            self.execute_command("sudo ufw allow from 127.0.0.1 to any port 5000 proto tcp", "UFW backend localhost only", 9)
+            self.execute_command("sudo ufw allow from 127.0.0.1 to any port 8080 proto tcp", "UFW proxy localhost only", 9)
+            self.execute_command("sudo ufw allow from 127.0.0.1 to any port 11434 proto tcp", "UFW Ollama localhost only", 9)
             
-            self.execute_command("sudo ufw reload", "UFW reload", 8)
+            self.execute_command("sudo ufw reload", "UFW reload", 9)
             self.log("UFW configuré avec règles strictes", "SUCCESS")
             
         elif self.execute_command("command -v firewall-cmd", "Détection firewalld")[0]:
             self.log("Configuration firewalld avec règles strictes...", "INFO")
-            self.execute_command("sudo systemctl enable --now firewalld", "Activation firewalld", 8)
+            self.execute_command("sudo systemctl enable --now firewalld", "Activation firewalld", 9)
             
             # Règles publiques
-            self.execute_command("sudo firewall-cmd --permanent --add-service=ssh", "Firewalld allow SSH", 8)
-            self.execute_command("sudo firewall-cmd --permanent --add-service=http", "Firewalld allow HTTP", 8)
-            self.execute_command("sudo firewall-cmd --permanent --add-service=https", "Firewalld allow HTTPS", 8)
+            self.execute_command("sudo firewall-cmd --permanent --add-service=ssh", "Firewalld allow SSH", 9)
+            self.execute_command("sudo firewall-cmd --permanent --add-service=http", "Firewalld allow HTTP", 9)
+            self.execute_command("sudo firewall-cmd --permanent --add-service=https", "Firewalld allow HTTPS", 9)
             
             # Règles localhost only
-            self.execute_command("sudo firewall-cmd --permanent --add-rich-rule='rule family=\"ipv4\" source address=\"127.0.0.1\" port port=\"5000\" protocol=\"tcp\" accept'", "Firewalld backend localhost", 8)
-            self.execute_command("sudo firewall-cmd --permanent --add-rich-rule='rule family=\"ipv4\" source address=\"127.0.0.1\" port port=\"8080\" protocol=\"tcp\" accept'", "Firewalld proxy localhost", 8)
-            self.execute_command("sudo firewall-cmd --permanent --add-rich-rule='rule family=\"ipv4\" source address=\"127.0.0.1\" port port=\"11434\" protocol=\"tcp\" accept'", "Firewalld Ollama localhost", 8)
+            self.execute_command("sudo firewall-cmd --permanent --add-rich-rule='rule family=\"ipv4\" source address=\"127.0.0.1\" port port=\"5000\" protocol=\"tcp\" accept'", "Firewalld backend localhost", 9)
+            self.execute_command("sudo firewall-cmd --permanent --add-rich-rule='rule family=\"ipv4\" source address=\"127.0.0.1\" port port=\"8080\" protocol=\"tcp\" accept'", "Firewalld proxy localhost", 9)
+            self.execute_command("sudo firewall-cmd --permanent --add-rich-rule='rule family=\"ipv4\" source address=\"127.0.0.1\" port port=\"11434\" protocol=\"tcp\" accept'", "Firewalld Ollama localhost", 9)
             
-            self.execute_command("sudo firewall-cmd --reload", "Firewalld reload", 8)
+            self.execute_command("sudo firewall-cmd --reload", "Firewalld reload", 9)
             self.log("Firewalld configuré avec règles strictes", "SUCCESS")
         else:
-            self.log("⚠️  Aucun pare-feu détecté - configuration manuelle recommandée", "WARNING")
+            self.log("⚠️ Aucun pare-feu détecté - configuration manuelle recommandée", "WARNING")
+    
+    def start_services(self):
+        """Démarre les services LLMUI"""
+        self.log("🚀 Démarrage des services...", "INFO")
+        
+        # Enable services
+        self.execute_command(
+            "sudo systemctl enable llmui-backend llmui-proxy nginx",
+            "Enable services",
+            12
+        )
+        
+        # Start backend
+        success, _ = self.execute_command(
+            "sudo systemctl start llmui-backend",
+            "Démarrage backend",
+            12
+        )
+        
+        if success:
+            self.log("✅ Service backend démarré", "SUCCESS")
+            time.sleep(5)  # Attendre que le backend soit prêt
+        else:
+            self.log("❌ Échec démarrage backend", "ERROR")
+            return False
+        
+        # Start proxy
+        success, _ = self.execute_command(
+            "sudo systemctl start llmui-proxy",
+            "Démarrage proxy",
+            12
+        )
+        
+        if success:
+            self.log("✅ Service proxy démarré", "SUCCESS")
+        else:
+            self.log("❌ Échec démarrage proxy", "ERROR")
+            return False
+        
+        # Ensure nginx is running
+        self.execute_command(
+            "sudo systemctl restart nginx",
+            "Redémarrage nginx",
+            12
+        )
+        
+        # Wait for services to stabilize
+        time.sleep(3)
+        
+        # Check services status
+        self.log("\n📊 Vérification des services:", "INFO")
+        
+        services = ["llmui-backend", "llmui-proxy", "nginx", "ollama"]
+        all_ok = True
+        
+        for service in services:
+            success, _ = self.execute_command(
+                f"sudo systemctl is-active {service}",
+                f"Vérif {service}",
+                12
+            )
+            if success:
+                self.log(f"  ✅ {service} actif", "SUCCESS")
+            else:
+                self.log(f"  ❌ {service} inactif", "ERROR")
+                all_ok = False
+        
+        return all_ok
+    
+    def get_server_ip(self):
+        """Récupère l'IP du serveur"""
+        try:
+            # Essayer de récupérer l'IP publique
+            success, output = self.execute_command(
+                "curl -s ifconfig.me",
+                "Récupération IP publique",
+                12
+            )
+            if success and output.strip():
+                return output.strip()
+            
+            # Fallback: IP locale
+            success, output = self.execute_command(
+                "hostname -I | awk '{print $1}'",
+                "Récupération IP locale",
+                12
+            )
+            if success and output.strip():
+                return output.strip()
+            
+            return "localhost"
+        except:
+            return "localhost"
     
     def verify_installation(self):
-        """Vérifie que l'installation de base fonctionne"""
-        self.log("=== VÉRIFICATION POST-INSTALLATION ===", "INFO")
+        """Vérifie que l'installation complète fonctionne"""
+        self.log("\n=== VÉRIFICATION POST-INSTALLATION COMPLÈTE ===", "INFO")
         
         checks = [
             ("test -d /opt/llmui-core", "Répertoire installation"),
+            ("test -d /opt/llmui-core/src", "Répertoire src"),
+            ("test -d /opt/llmui-core/web", "Répertoire web"),
             ("test -f /var/lib/llmui/llmui.db", "Base de données"),
             ("test -f /etc/systemd/system/llmui-backend.service", "Service backend créé"),
             ("test -f /etc/systemd/system/llmui-proxy.service", "Service proxy créé"),
             ("test -f /etc/nginx/sites-available/llmui", "Config Nginx"),
-            ("sudo systemctl is-active nginx", "Service nginx")
+            ("sudo systemctl is-active nginx", "Service nginx"),
+            ("sudo systemctl is-active llmui-backend", "Service backend"),
+            ("sudo systemctl is-active llmui-proxy", "Service proxy")
         ]
         
         all_ok = True
         for cmd, name in checks:
-            success, output = self.execute_command(cmd, f"Vérif {name}", 10)
+            success, output = self.execute_command(cmd, f"Vérif {name}", 13)
             if success:
                 self.log(f"✅ {name} OK", "SUCCESS")
             else:
                 self.log(f"❌ {name} ÉCHEC", "ERROR")
                 all_ok = False
+        
+        # Test HTTP
+        self.log("\n🌐 Test de connexion HTTP...", "INFO")
+        success, _ = self.execute_command(
+            "curl -s -o /dev/null -w '%{http_code}' http://localhost/",
+            "Test HTTP localhost",
+            13
+        )
+        
+        if success:
+            self.log("✅ Interface web accessible", "SUCCESS")
+        else:
+            self.log("⚠️ Interface web non accessible", "WARNING")
         
         return all_ok
     
@@ -1057,21 +1358,33 @@ def main():
     andy = Andy()
     try:
         if andy.run_installation():
-            andy.verify_installation()
-            print("\n" + "="*60)
-            print("✅ Installation de base terminée!")
-            print("="*60)
-            print(f"📋 Logs: /tmp/andy_install.log")
-            print(f"🗃️ Base de données: /tmp/andy_installation.db")
-            print(f"🌐 Dépôt GitHub: {GITHUB_REPO}")
-            print("\n⚠️  PROCHAINES ÉTAPES:")
-            print("   1. sudo python3 andy_deploy_source.py")
-            print("   2. sudo python3 andy_start_services.py")
-            print("="*60)
-            return 0  # Code de retour succès
+            if andy.verify_installation():
+                server_ip = andy.get_server_ip()
+                
+                print("\n" + "="*70)
+                print("✅ INSTALLATION COMPLÈTE TERMINÉE AVEC SUCCÈS!")
+                print("="*70)
+                print(f"\n🌐 Accédez à LLMUI Core via:")
+                print(f"   http://{server_ip}/")
+                print(f"   http://localhost/  (si local)")
+                print(f"\n📋 Logs: /tmp/andy_install.log")
+                print(f"🗃️ Base de données Andy: /tmp/andy_installation.db")
+                print(f"📊 Logs services:")
+                print(f"   Backend: /opt/llmui-core/logs/backend.log")
+                print(f"   Proxy: /opt/llmui-core/logs/proxy.log")
+                print(f"\n🔧 Commandes utiles:")
+                print(f"   sudo systemctl status llmui-backend")
+                print(f"   sudo systemctl status llmui-proxy")
+                print(f"   sudo journalctl -u llmui-backend -f")
+                print("="*70)
+                return 0
+            else:
+                print("\n⚠️ Installation terminée avec des avertissements")
+                print("Consultez les logs pour plus de détails")
+                return 1
         else:
             print("\n❌ Installation échouée. Consultez les logs.")
-            return 1  # Code de retour échec
+            return 1
     except KeyboardInterrupt:
         andy.log("Installation interrompue par l'utilisateur", "WARNING")
         return 1
@@ -1088,3 +1401,5 @@ if __name__ == "__main__":
         print("Ce script doit être exécuté en tant que root (sudo)")
         sys.exit(1)
     sys.exit(main())
+
+                
