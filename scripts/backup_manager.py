@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-LLMUI Core v2.0 - Backup Manager
+LLMUI Core v0.5.0 - Backup Manager
 Gère la détection d'installations existantes et les backups
 Author: François Chalut | contact@llmui.org
 """
