@@ -1124,10 +1124,34 @@ Now analyze and provide fixes:"""
         conn.commit()
         conn.close()
         
+        # CORRECTION: Permissions APRÈS création de la DB
+        # 1. Ownership de la DB
         self.execute_command(
             f"sudo chown llmui:llmui {db_path}",
-            "Permissions base de données",
+            "Ownership base de données",
             4
+        )
+        
+        # 2. Permissions de la DB (660 = rw-rw----)
+        self.execute_command(
+            f"sudo chmod 660 {db_path}",
+            "Permissions fichier DB (660)",
+            4
+        )
+        
+        # 3. Permissions du répertoire parent (775 = rwxrwxr-x)
+        # Important pour SQLite qui crée des fichiers temporaires
+        self.execute_command(
+            "sudo chmod 775 /var/lib/llmui",
+            "Permissions répertoire DB (775)",
+            4
+        )
+        
+        self.execute_command(
+            "sudo chmod 775 /var/log/llmui",
+            "Permissions répertoire logs (775)",
+            4
+        )
         )
         
         self.log(f"Utilisateur '{username}' créé avec succès", "SUCCESS")
@@ -1389,7 +1413,7 @@ Now analyze and provide fixes:"""
         self.log("=== ÉTAPE 5: Création structure de base ===", "INFO")
         
         self.execute_command(
-            "sudo mkdir -p /opt/llmui-core/{src,web,logs,scripts}",
+            "sudo mkdir -p /opt/llmui-core/src /opt/llmui-core/web /opt/llmui-core/logs /opt/llmui-core/scripts",
             "Création structure répertoires",
             5
         )
@@ -1467,6 +1491,38 @@ Now analyze and provide fixes:"""
         self.execute_command(
             "sudo chown -R llmui:llmui /opt/llmui-core",
             "Permissions installation",
+            8
+        )
+        
+        # CORRECTION: Permissions critiques pour la DB
+        self.execute_command(
+            "sudo chown -R llmui:llmui /var/lib/llmui",
+            "Ownership /var/lib/llmui",
+            8
+        )
+        
+        self.execute_command(
+            "sudo chmod 775 /var/lib/llmui",
+            "Permissions répertoire DB",
+            8
+        )
+        
+        if os.path.exists("/var/lib/llmui/llmui.db"):
+            self.execute_command(
+                "sudo chmod 660 /var/lib/llmui/llmui.db",
+                "Permissions fichier DB",
+                8
+            )
+        
+        self.execute_command(
+            "sudo chown -R llmui:llmui /var/log/llmui",
+            "Ownership /var/log/llmui",
+            8
+        )
+        
+        self.execute_command(
+            "sudo chmod 775 /var/log/llmui",
+            "Permissions répertoire logs",
             8
         )
         
