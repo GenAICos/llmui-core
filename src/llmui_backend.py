@@ -10,6 +10,9 @@ Website: https://llmui.org
 CORRECTIONS v0.5.0:
 - FIX: /api/models retourne maintenant des objets {name, size} au lieu de strings
 - FIX: /api/timeout-levels retourne success: true
+- FIX: Suppression de la fonction login dupliquée
+- FIX: Ajout des modèles Pydantic de réponse pour l'authentification
+- FIX: Utilisation de JSONResponse pour l'authentification
 - Tous les endpoints fonctionnels
 
 Features:
@@ -24,16 +27,12 @@ import os
 import json
 import sqlite3
 import hashlib
+import secrets # AJOUTÉ pour génération de clés
 from datetime import datetime
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass, field
 from enum import Enum
 import pytz
-
-# ============================================================================
-# AJOUT AUTHENTIFICATION - IMPORTS
-# ============================================================================
-import secrets  # AJOUTÉ pour génération de clés
 
 # FastAPI imports
 from fastapi import FastAPI, HTTPException, Request, Depends, status
@@ -44,7 +43,6 @@ import uvicorn
 
 # AJOUTÉ: Session middleware
 from starlette.middleware.sessions import SessionMiddleware
-# ============================================================================
 
 # HTTP client
 import httpx
@@ -98,11 +96,8 @@ DEFAULT_WORKER_MODELS = ["granite3.1:2b", "phi3:3.8b", "qwen2.5:3b"]
 DEFAULT_MERGER_MODEL = "mistral:7b"
 DEFAULT_TIMEOUT_LEVEL = TimeoutLevel.MEDIUM
 
-# ============================================================================
-# 🔐 AJOUT AUTHENTIFICATION - CONFIG SESSION
-# ============================================================================
+# CONFIG SESSION
 SECRET_KEY = os.getenv("SESSION_SECRET_KEY", secrets.token_hex(32))
-# ============================================================================
 
 # ============================================================================
 # 🌍 SYSTÈME D'ENRICHISSEMENT DES PROMPTS
@@ -172,7 +167,6 @@ def enrich_prompt(user_prompt: str, language: str = 'en') -> str:
     enriched_prompt = f"{metadata}{language_directive}{user_prompt}"
     
     return enriched_prompt
-# ============================================================================
 
 # ============================================================================
 # FASTAPI APP
@@ -200,9 +194,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ============================================================================
-# 🔐 AJOUT AUTHENTIFICATION - SESSION MIDDLEWARE
-# ============================================================================
+# SESSION MIDDLEWARE
 app.add_middleware(
     SessionMiddleware,
     secret_key=SECRET_KEY,
@@ -211,7 +203,6 @@ app.add_middleware(
     same_site="lax",
     https_only=False  # Mettre True si SSL activé
 )
-# ============================================================================
 
 # ============================================================================
 # PYDANTIC MODELS
@@ -255,57 +246,45 @@ class LoginRequest(BaseModel):
     password: str
     rememberMe: Optional[bool] = False
 
-class User(BaseModel):
-    """User model"""
+class UserResponse(BaseModel):
+    """User info for response"""
+    id: int
     username: str
-    role: str = "user"
+    email: Optional[str] = None
+    is_admin: bool
+    created_at: Optional[str] = None
 
-def verify_password(username: str, password: str) -> Dict[str, Any]:
-    """Verify user password against SQLite database
-    
-    Returns:
-        Dict with user info if valid, None if invalid
-    """
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        # Hash le mot de passe avec SHA256
-        password_hash = hashlib.sha256(password.encode()).hexdigest()
-        
-        # Chercher l'utilisateur
-        cursor.execute('''
-            SELECT id, username, email, is_admin, created_at, last_login
-            FROM users 
-            WHERE username = ? AND password_hash = ?
-        ''', (username, password_hash))
-        
-        user = cursor.fetchone()
-        conn.close()
-        
-        if user:
-            return {
-                "id": user[0],
-                "username": user[1],
-                "email": user[2],
-                "role": "admin" if user[3] else "user",
-                "created_at": user[4],
-                "last_login": user[5]
-            }
-        return None
-        
-    except Exception as e:
-        print(f"[ERROR] verify_password: {e}")
-        return None
+# AJOUTÉ: Modèle de réponse pour la connexion
+class LoginResponse(BaseModel):
+    success: bool
+    message: str
+    user: Optional[UserResponse] = None
+
+# AJOUTÉ: Modèle de réponse pour la vérification de session
+class SessionResponse(BaseModel):
+    authenticated: bool
+    user: Optional[UserResponse] = None
 
 def get_current_user(request: Request) -> Optional[Dict]:
     """Get current authenticated user from session"""
-    return request.session.get("user")
+    user_id = request.session.get("user_id")
+    if user_id:
+        return {
+            "id": user_id,
+            "username": request.session.get("username"),
+            "email": request.session.get("email"),
+            "is_admin": request.session.get("is_admin"),
+            "login_time": request.session.get("login_time")
+        }
+    return None
 
 def require_auth(request: Request) -> Dict:
     """Dependency to require authentication"""
     user = get_current_user(request)
     if not user:
+        # NOTE: Pas besoin de lever une HTTPException ici, car la seconde définition de login
+        # dans le code original ne l'utilise pas comme dépendance. On garde le mécanisme
+        # de la dépendance require_auth pour les routes protégées.
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated"
@@ -314,70 +293,145 @@ def require_auth(request: Request) -> Dict:
 
 # ============================================================================
 # 🔐 AUTHENTIFICATION - ENDPOINTS
+# La première implémentation des endpoints d'authentification a été supprimée
+# pour éviter la duplication. La seconde (plus complète) est conservée et corrigée.
 # ============================================================================
 
-@app.post("/api/auth/login")
-async def login(request: Request, login_data: LoginRequest):
-    """Login endpoint with SQLite verification"""
-    user_info = verify_password(login_data.username, login_data.password)
-    
-    if user_info:
-        # Update last_login dans la DB
-        try:
-            conn = sqlite3.connect(DB_PATH)
-            conn.execute(
-                'UPDATE users SET last_login = ? WHERE id = ?',
-                (datetime.now().isoformat(), user_info["id"])
+@app.post("/api/auth/login", response_model=LoginResponse)
+async def login_user(credentials: LoginRequest, request: Request):
+    """User login endpoint"""
+    try:
+        username = credentials.username.strip().lower()
+        password = credentials.password
+        
+        print(f"[AUTH] Attempting login for user: {username}")
+        
+        # Get user from DB
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT id, username, password_hash, email, is_admin, created_at
+            FROM users
+            WHERE LOWER(username) = ?
+        ''', (username,))
+        user = cursor.fetchone()
+        conn.close()
+        
+        if user:
+            stored_hash = user[2]
+            
+            # Simple hash verification
+            password_hash = hashlib.sha256(password.encode()).hexdigest()
+            
+            if password_hash == stored_hash:
+                # Create session
+                is_admin = bool(user[4])
+                user_info = {
+                    "id": user[0],
+                    "username": user[1],
+                    "email": user[3],
+                    "is_admin": is_admin
+                }
+                
+                request.session['user_id'] = user_info['id']
+                request.session['username'] = user_info['username']
+                request.session['email'] = user_info['email']
+                request.session['is_admin'] = user_info['is_admin']
+                request.session['login_time'] = datetime.now().isoformat()
+                
+                # Set session duration (SessionMiddleware handles max_age)
+                # Note: max_age is set on the middleware, direct session modification is not standard for duration control in Starlette
+                # The 'rememberMe' logic should be handled client-side or by setting a specific cookie time via custom headers if required,
+                # but the current SessionMiddleware configuration is global for 24h. We leave the client-side logic as is for now.
+
+                
+                # Update last_login
+                conn = sqlite3.connect(DB_PATH)
+                conn.execute(
+                    'UPDATE users SET last_login = ? WHERE id = ?',
+                    (datetime.now().isoformat(), user[0])
+                )
+                conn.commit()
+                conn.close()
+                
+                print(f"[AUTH] User '{username}' logged in successfully")
+                
+                return LoginResponse(
+                    success=True,
+                    message='Connexion réussie',
+                    user=UserResponse(
+                        id=user[0],
+                        username=user[1],
+                        email=user[3],
+                        is_admin=is_admin,
+                        created_at=user[5]
+                    )
+                )
+            else:
+                print(f"[AUTH] Failed login attempt for user '{username}' (Wrong Password)")
+                return LoginResponse(
+                    success=False,
+                    message='Nom d\'utilisateur ou mot de passe incorrect'
+                )
+                
+        else:
+            print(f"[AUTH] Failed login attempt for user '{username}' (User Not Found)")
+            return LoginResponse(
+                success=False,
+                message='Nom d\'utilisateur ou mot de passe incorrect'
             )
-            conn.commit()
-            conn.close()
-        except Exception as e:
-            print(f"[WARN] Could not update last_login: {e}")
-        
-        # Create session
-        user_data = {
-            "id": user_info["id"],
-            "username": user_info["username"],
-            "email": user_info["email"],
-            "role": user_info["role"],
-            "login_time": datetime.now().isoformat()
-        }
-        request.session["user"] = user_data
-        
-        return {
-            "success": True,
-            "message": "Login successful",
-            "user": {
-                "username": user_info["username"],
-                "role": user_info["role"]
-            }
-        }
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials"
+            
+    except Exception as e:
+        print(f"[ERROR] Login failed: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=LoginResponse(
+                success=False,
+                message="Erreur lors de l'authentification: " + str(e)
+            ).dict()
         )
+
+@app.get("/api/auth/verify", response_model=SessionResponse)
+async def verify_session(request: Request):
+    """Verify if user is authenticated"""
+    user_data = get_current_user(request)
+    
+    if user_data:
+        # Construit l'objet UserResponse sans le login_time pour le Pydantic Model
+        user_response = UserResponse(
+            id=user_data['id'],
+            username=user_data['username'],
+            email=user_data['email'],
+            is_admin=user_data['is_admin']
+            # created_at est absent de la session, mais optionnel dans UserResponse
+        )
+        return SessionResponse(
+            authenticated=True,
+            user=user_response
+        )
+    
+    return SessionResponse(authenticated=False)
 
 @app.post("/api/auth/logout")
 async def logout(request: Request):
-    """Logout endpoint"""
+    """Logout user and destroy session"""
+    username = request.session.get('username', 'unknown')
     request.session.clear()
-    return {"success": True, "message": "Logged out successfully"}
-
-@app.get("/api/auth/verify")
-async def verify_session(request: Request):
-    """Verify if user is authenticated"""
-    user = get_current_user(request)
-    if user:
-        return {
-            "authenticated": True,
-            "user": {
-                "username": user["username"],
-                "role": user["role"]
-            }
+    
+    print(f"[AUTH] User '{username}' logged out")
+    
+    return JSONResponse(
+        content={
+            'success': True,
+            'message': 'Déconnexion réussie'
         }
-    else:
-        return {"authenticated": False}
+    )
+
+@app.get("/api/auth/user")
+async def get_user_info(request: Request, user: Dict = Depends(require_auth)):
+    """Get current user information (protected route)"""
+    # L'objet `user` est déjà rempli par `require_auth`
+    return JSONResponse(content={'user': user})
 
 # ============================================================================
 # DATABASE MODELS & CLASSES
@@ -451,6 +505,40 @@ class DatabaseManager:
                 FOREIGN KEY (message_id) REFERENCES messages(id)
             )
         """)
+        
+        # AJOUTÉ: Table des utilisateurs si elle n'existe pas
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                email TEXT,
+                is_admin INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                last_login TEXT
+            )
+        """)
+        
+        # Insertion des utilisateurs par défaut si la table est vide
+        cursor.execute("SELECT COUNT(*) FROM users")
+        if cursor.fetchone()[0] == 0:
+            # Hashs SHA256 pour les mots de passe par défaut
+            francois_hash = hashlib.sha256("Francois2025!".encode()).hexdigest()
+            demo_hash = hashlib.sha256("demo123".encode()).hexdigest()
+            
+            # Utilisateur admin
+            cursor.execute("""
+                INSERT INTO users (username, password_hash, email, is_admin, created_at)
+                VALUES (?, ?, ?, ?, ?)
+            """, ("francois", francois_hash, "admin@llmui.org", 1, datetime.now().isoformat()))
+            
+            # Utilisateur démo
+            cursor.execute("""
+                INSERT INTO users (username, password_hash, email, is_admin, created_at)
+                VALUES (?, ?, ?, ?, ?)
+            """, ("demo", demo_hash, "demo@llmui.org", 0, datetime.now().isoformat()))
+            
+            print("[INFO] Default users created in SQLite DB.")
         
         conn.commit()
         conn.close()
@@ -728,6 +816,9 @@ class LLMUICore:
             worker_responses = []
             for worker in worker_models:
                 try:
+                    # Note: Le timeout des workers est le timeout global divisé par le nombre de workers, ce qui est une heuristique.
+                    worker_timeout = timeout_seconds / len(worker_models) if len(worker_models) > 0 else timeout_seconds
+                    
                     response = await self.client.post(
                         f"{self.ollama_base}/api/generate",
                         json={
@@ -735,7 +826,7 @@ class LLMUICore:
                             "prompt": enriched_prompt,
                             "stream": False
                         },
-                        timeout=timeout_seconds / len(worker_models)
+                        timeout=worker_timeout
                     )
                     response.raise_for_status()
                     result = response.json()
@@ -761,7 +852,13 @@ Responses:
             for i, wr in enumerate(worker_responses, 1):
                 merger_prompt += f"\nModel {i} ({wr['model']}):\n{wr['response']}\n"
             
+            # Assurer que la directive de langue est également dans le prompt du Merger
+            language_directive = get_language_directive(language)
+            merger_prompt += f"\n{language_directive}"
             merger_prompt += f"\nProvide a synthesized response that combines the best insights from all models. RESPOND IN {language.upper()}."
+            
+            # Note: Le timeout du merger est le timeout global divisé par 2, ce qui est une autre heuristique.
+            merger_timeout = timeout_seconds / 2
             
             response = await self.client.post(
                 f"{self.ollama_base}/api/generate",
@@ -770,7 +867,7 @@ Responses:
                     "prompt": merger_prompt,
                     "stream": False
                 },
-                timeout=timeout_seconds / 2
+                timeout=merger_timeout
             )
             response.raise_for_status()
             merger_result = response.json()
@@ -810,126 +907,6 @@ Responses:
 
 # Initialize core
 core = LLMUICore()
-
-# ============================================================================
-# 🔐 AUTHENTIFICATION - ENDPOINTS
-# ============================================================================
-
-@app.post("/api/auth/login", response_model=LoginResponse)
-async def login(credentials: LoginRequest, request: Request):
-    """User login endpoint"""
-    try:
-        username = credentials.username.strip().lower()
-        password = credentials.password
-        
-        print(f"[AUTH] Attempting login for user: {username}")
-        
-        # Get user from DB
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT id, username, password_hash, email, is_admin, created_at
-            FROM users
-            WHERE LOWER(username) = ?
-        ''', (username,))
-        user = cursor.fetchone()
-        conn.close()
-        
-        if user:
-            stored_hash = user[2]
-            
-            # Simple hash verification
-            password_hash = hashlib.sha256(password.encode()).hexdigest()
-            
-            if password_hash == stored_hash:
-                # Create session
-                request.session['user_id'] = user[0]
-                request.session['username'] = user[1]
-                request.session['email'] = user[3]
-                request.session['is_admin'] = bool(user[4])
-                request.session['login_time'] = datetime.now().isoformat()
-                
-                # Set session duration
-                if credentials.rememberMe:
-                    request.session['max_age'] = 2592000  # 30 days
-                else:
-                    request.session['max_age'] = 86400  # 24 hours
-                
-                # Update last_login
-                conn = sqlite3.connect(DB_PATH)
-                conn.execute(
-                    'UPDATE users SET last_login = ? WHERE id = ?',
-                    (datetime.now().isoformat(), user[0])
-                )
-                conn.commit()
-                conn.close()
-                
-                print(f"[AUTH] User '{username}' logged in successfully")
-                
-                return LoginResponse(
-                    success=True,
-                    message='Connexion réussie',
-                    user={
-                        'id': user[0],
-                        'username': user[1],
-                        'email': user[3],
-                        'is_admin': bool(user[4]),
-                        'created_at': user[5]
-                    }
-                )
-            else:
-                print(f"[AUTH] Failed login attempt for user '{username}'")
-                return LoginResponse(
-                    success=False,
-                    message='Nom d\'utilisateur ou mot de passe incorrect'
-                )
-                
-        else:
-            print(f"[AUTH] Failed login attempt for user '{username}'")
-            return LoginResponse(
-                success=False,
-                message='Nom d\'utilisateur ou mot de passe incorrect'
-            )
-            
-    except Exception as e:
-        print(f"[ERROR] Login failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erreur lors de l'authentification"
-        )
-
-@app.get("/api/auth/verify", response_model=SessionResponse)
-async def verify_session(request: Request):
-    """Verify if user is authenticated"""
-    user = get_current_user(request)
-    
-    if user:
-        return SessionResponse(
-            authenticated=True,
-            user=user
-        )
-    
-    return SessionResponse(authenticated=False)
-
-@app.post("/api/auth/logout")
-async def logout(request: Request):
-    """Logout user and destroy session"""
-    username = request.session.get('username', 'unknown')
-    request.session.clear()
-    
-    print(f"[AUTH] User '{username}' logged out")
-    
-    return JSONResponse(
-        content={
-            'success': True,
-            'message': 'Déconnexion réussie'
-        }
-    )
-
-@app.get("/api/auth/user")
-async def get_user_info(request: Request, user: Dict = Depends(require_auth)):
-    """Get current user information (protected route)"""
-    return JSONResponse(content={'user': user})
 
 # ============================================================================
 # API ENDPOINTS
@@ -994,7 +971,7 @@ async def simple_generate(request: Request, req: SimpleGenerateRequest, user: Di
         )
         
         # Save to memory
-        if req.session_id:
+        if req.session_id and result["success"]:
             core.memory.add_message(req.session_id, "user", req.prompt)
             core.memory.add_message(req.session_id, "assistant", result["response"])
         
@@ -1022,7 +999,7 @@ async def consensus_generate(request: Request, req: ConsensusGenerateRequest, us
         )
         
         # Save to memory
-        if req.session_id:
+        if req.session_id and result["success"]:
             core.memory.add_message(req.session_id, "user", req.prompt)
             core.memory.add_message(req.session_id, "assistant", result["response"])
         
@@ -1102,11 +1079,13 @@ async def log_requests(request: Request, call_next):
     start_time = datetime.now()
     
     # Get user if authenticated (with safety check)
+    user_info = 'anonymous'
     try:
         user = get_current_user(request)
-        user_info = user['username'] if user else 'anonymous'
-    except (AssertionError, Exception):
-        user_info = 'anonymous'
+        if user:
+            user_info = user.get('username', 'unknown_authenticated')
+    except Exception:
+        pass # Ignore errors during user lookup from session
     
     # Process request
     response = await call_next(request)
