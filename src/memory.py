@@ -19,7 +19,7 @@ HOW IT WORKS:
 
 Author: François Chalut
 Website: https://llmui.org
-Version: 2.0.0
+Version: 0.5.0
 """
 
 from dataclasses import dataclass
