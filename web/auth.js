@@ -1,6 +1,7 @@
 /**
  * LLMUI Authentication Script
  * Handles login functionality and session management
+ * Version: v0.5.0
  */
 
 class AuthManager {
@@ -127,10 +128,12 @@ class AuthManager {
                 })
             });
 
+            // CORRECTION ASSURÉE PAR LE BACKEND: Le serveur doit maintenant toujours retourner du JSON,
+            // même en cas de 401. Si response.ok est false, on s'attend à lire le message d'erreur dans 'data'.
             const data = await response.json();
 
             if (response.ok && data.success) {
-                // Login successful
+                // Login successful (200 OK)
                 this.showAlert('success', 'Connexion réussie ! Redirection...');
                 
                 // Store user info in localStorage if remember me is checked
@@ -143,8 +146,7 @@ class AuthManager {
                     window.location.href = '/index.html';
                 }, 1000);
             } else {
-                // Login failed
-                // Utiliser data.message si disponible, sinon un message générique basé sur la réponse
+                // Login failed (e.g., 401 Unauthorized, même si la réponse est JSON)
                 const message = data.message || 'Nom d\'utilisateur ou mot de passe incorrect';
                 this.showAlert('error', message);
                 loginButton.disabled = false;
@@ -152,8 +154,8 @@ class AuthManager {
             }
         } catch (error) {
             console.error('Login error:', error);
-            // CORRECTION: Assurer que le bouton est réactivé en cas d'erreur réseau
-            this.showAlert('error', 'Erreur de connexion au serveur. Veuillez réessayer.');
+            // CORRECTION: Assurer que le bouton est réactivé en cas d'erreur réseau ou JSON.parse
+            this.showAlert('error', 'Erreur de connexion au serveur ou réponse inattendue. Veuillez réessayer.');
             loginButton.disabled = false;
             loginButton.innerHTML = 'Se connecter';
         }
