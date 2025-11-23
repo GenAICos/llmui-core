@@ -1,5 +1,5 @@
 /*
- * LLMUI Core v2.0 - Utilities
+ * LLMUI Core v0.5.0 - Utilities
  * Author: François Chalut
  * Website: https://llmui.org
  */
