@@ -6,6 +6,7 @@ Cache intelligent avec fallback automatique
 
 Author: François Chalut
 Website: https://llmui.org
+Version: 0.5.0
 
 ARCHITECTURE:
 ┌─────────────────────────────────────────────┐
