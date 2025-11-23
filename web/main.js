@@ -1,5 +1,5 @@
 /*
- * LLMUI Core v2.0 - Initialization
+ * LLMUI Core v0.5.0 - Initialization
  * Author: François Chalut
  * Website: https://llmui.org
  */
