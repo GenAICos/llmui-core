@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 LLMUI Core - Proxy Server with HTTPS Support
-Version: 2.2.2 - Security fixes and cleanup
+Version: 0.5.0
 
 Author: François Chalut
 Website: https://llmui.org
