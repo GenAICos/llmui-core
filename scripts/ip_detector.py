@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-LLMUI Core v2.0 - IP Detection Module
+LLMUI Core v0.5.0 - IP Detection Module
 Détecte automatiquement les adresses IP du serveur
 Author: François Chalut | contact@llmui.org
 """
