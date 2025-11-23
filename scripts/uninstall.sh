@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ============================================================================
-# LLMUI Core v2.0 - Complete Uninstallation Script
+# LLMUI Core v0.5.0 - Complete Uninstallation Script
 # ============================================================================
 # Author: François Chalut
 # Website: https://llmui.org
@@ -53,7 +53,7 @@ log_error() {
 clear
 echo ""
 echo "╔════════════════════════════════════════════════╗"
-echo "║   LLMUI Core v2.0 - Uninstallation Script     ║"
+echo "║   LLMUI Core v0.5.0 - Uninstallation Script     ║"
 echo "╚════════════════════════════════════════════════╝"
 echo ""
 
