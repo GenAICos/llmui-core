@@ -283,9 +283,6 @@ LLMUI Core utilise une approche unique:
 ### 🧠 Système de mémoire avancé
 
 - **Mémoire court terme**: Contexte de conversation
-- **Mémoire long terme**: SQLite avec recherche sémantique
-- **RAG (Retrieval-Augmented Generation)**: Base vectorielle
-- **Mémoire hybride**: Combinaison intelligente
 
 ### 📁 Traitement de fichiers
 
