@@ -2,6 +2,8 @@
 """
 Backend d'installation pour LLMUI
 Gère l'installation via l'interface web
+Auteur: Francois Chalut
+Version: 0.5.0
 """
 
 import os
