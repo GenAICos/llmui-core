@@ -1,9 +1,9 @@
 /*
- * LLMUI Core v2.0.1 - Chat Components
+ * LLMUI Core v0.5.0 - Chat Components
  * Author: Francois Chalut
  * Website: https://llmui.org
  * 
- * CORRECTIONS v2.0.1:
+ * CORRECTIONS v0.5.0:
  * - Thème light: bulles de conversation avec bonnes couleurs
  * - Thème light: status-bar avec texte noir et boutons contrastés
  */
@@ -702,7 +702,7 @@ body:has(.config-panel.collapsed) .panel-arrow {
 }
 
 /* ============================================================================
-   CORRECTIONS THÈME LIGHT v2.0.1
+   CORRECTIONS THÈME LIGHT v0.5.0
    ============================================================================ */
 
 /* Bulles de conversation en mode light */
