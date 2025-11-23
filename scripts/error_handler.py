@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-LLMUI Core v2.0 - Installation Error Handler
+LLMUI Core v0.5.0 - Installation Error Handler
 Détecte et résout automatiquement les erreurs d'installation
 Author: François Chalut | contact@llmui.org
 """
