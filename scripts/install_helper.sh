@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# LLMUI Core v2.0 - Installation Helper with Integrated Backup
+# LLMUI Core v0.5.0 - Installation Helper with Integrated Backup
 # Script qui gère directement l'installation avec backup
 # Author: François Chalut | contact@llmui.org
 #
@@ -25,7 +25,7 @@ print_header() {
     echo ""
     echo "╔════════════════════════════════════════════════════════════════════╗"
     echo "║                                                                    ║"
-    echo "║            🚀 LLMUI Core v2.0 - Installation avec Backup          ║"
+    echo "║            🚀 LLMUI Core v0.5.0 - Installation avec Backup         ║"
     echo "║                                                                    ║"
     echo "╚════════════════════════════════════════════════════════════════════╝"
     echo ""
