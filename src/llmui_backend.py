@@ -11,8 +11,8 @@ CORRECTIONS v0.5.0:
 - FIX: /api/models retourne maintenant des objets {name, size} au lieu de strings
 - FIX: /api/timeout-levels retourne success: true
 - FIX: Suppression de la fonction login dupliquée
-- FIX: Ajout des modèles Pydantic de réponse pour l'authentification
-- FIX: Utilisation de JSONResponse pour l'authentification
+- FIX: Ajout des modèles Pydantic de réponse pour l'authentification (UserResponse, LoginResponse, SessionResponse)
+- FIX: Utilisation de JSONResponse explicite pour l'authentification (y compris en cas d'erreur 401) pour éviter l'erreur JSON.parse côté client.
 - Tous les endpoints fonctionnels
 
 Features:
@@ -246,6 +246,7 @@ class LoginRequest(BaseModel):
     password: str
     rememberMe: Optional[bool] = False
 
+# AJOUTÉ: Modèle pour les informations utilisateur dans les réponses
 class UserResponse(BaseModel):
     """User info for response"""
     id: int
@@ -282,9 +283,6 @@ def require_auth(request: Request) -> Dict:
     """Dependency to require authentication"""
     user = get_current_user(request)
     if not user:
-        # NOTE: Pas besoin de lever une HTTPException ici, car la seconde définition de login
-        # dans le code original ne l'utilise pas comme dépendance. On garde le mécanisme
-        # de la dépendance require_auth pour les routes protégées.
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated"
@@ -293,8 +291,6 @@ def require_auth(request: Request) -> Dict:
 
 # ============================================================================
 # 🔐 AUTHENTIFICATION - ENDPOINTS
-# La première implémentation des endpoints d'authentification a été supprimée
-# pour éviter la duplication. La seconde (plus complète) est conservée et corrigée.
 # ============================================================================
 
 @app.post("/api/auth/login", response_model=LoginResponse)
@@ -339,12 +335,6 @@ async def login_user(credentials: LoginRequest, request: Request):
                 request.session['is_admin'] = user_info['is_admin']
                 request.session['login_time'] = datetime.now().isoformat()
                 
-                # Set session duration (SessionMiddleware handles max_age)
-                # Note: max_age is set on the middleware, direct session modification is not standard for duration control in Starlette
-                # The 'rememberMe' logic should be handled client-side or by setting a specific cookie time via custom headers if required,
-                # but the current SessionMiddleware configuration is global for 24h. We leave the client-side logic as is for now.
-
-                
                 # Update last_login
                 conn = sqlite3.connect(DB_PATH)
                 conn.execute(
@@ -369,16 +359,24 @@ async def login_user(credentials: LoginRequest, request: Request):
                 )
             else:
                 print(f"[AUTH] Failed login attempt for user '{username}' (Wrong Password)")
-                return LoginResponse(
-                    success=False,
-                    message='Nom d\'utilisateur ou mot de passe incorrect'
+                # FIX: Retourner JSONResponse 401 pour éviter JSON.parse error côté client
+                return JSONResponse(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    content=LoginResponse(
+                        success=False,
+                        message='Nom d\'utilisateur ou mot de passe incorrect'
+                    ).dict()
                 )
                 
         else:
             print(f"[AUTH] Failed login attempt for user '{username}' (User Not Found)")
-            return LoginResponse(
-                success=False,
-                message='Nom d\'utilisateur ou mot de passe incorrect'
+            # FIX: Retourner JSONResponse 401 pour éviter JSON.parse error côté client
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content=LoginResponse(
+                    success=False,
+                    message='Nom d\'utilisateur ou mot de passe incorrect'
+                ).dict()
             )
             
     except Exception as e:
@@ -420,6 +418,7 @@ async def logout(request: Request):
     
     print(f"[AUTH] User '{username}' logged out")
     
+    # Utiliser JSONResponse
     return JSONResponse(
         content={
             'success': True,
@@ -857,7 +856,7 @@ Responses:
             merger_prompt += f"\n{language_directive}"
             merger_prompt += f"\nProvide a synthesized response that combines the best insights from all models. RESPOND IN {language.upper()}."
             
-            # Note: Le timeout du merger est le timeout global divisé par 2, ce qui est une autre heuristique.
+            # Note: Le timeout du merger est le timeout global divisé par 2, ce qui est une heuristique.
             merger_timeout = timeout_seconds / 2
             
             response = await self.client.post(
