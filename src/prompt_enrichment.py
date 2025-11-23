@@ -8,6 +8,7 @@ pour améliorer le contexte des modèles LLM.
 
 Author: François Chalut
 Website: https://llmui.org
+Version: 0.5.0
 """
 
 from datetime import datetime
