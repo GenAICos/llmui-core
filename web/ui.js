@@ -1,11 +1,72 @@
 /*
- * LLMUI Core v2.0.1 - UI Methods
+ * LLMUI Core v0.5.0 - UI Methods
  * Author: François Chalut
  * Website: https://llmui.org
  * 
- * CORRECTIONS v2.0.1:
+ * CORRECTIONS v0.5.0:
  * - Liens de téléchargement markdown → HTML cliquables
+ * - FIX: Clipboard compatible HTTP/HTTPS (fallback pour HTTP)
  */
+
+// ============================================================================
+// CLIPBOARD UTILITY - Compatible HTTP/HTTPS
+// ============================================================================
+
+/**
+ * Copie du texte dans le presse-papier
+ * Compatible HTTP et HTTPS avec fallback
+ * @param {string} text - Texte à copier
+ * @returns {Promise<boolean>} - true si succès
+ */
+function copyToClipboardFallback(text) {
+    // Méthode 1: Essayer l'API Clipboard moderne (HTTPS uniquement)
+    if (navigator.clipboard && window.isSecureContext) {
+        return navigator.clipboard.writeText(text)
+            .then(() => true)
+            .catch(err => {
+                console.warn('Clipboard API failed, using fallback:', err);
+                return fallbackCopyMethod(text);
+            });
+    }
+    
+    // Méthode 2: Fallback pour HTTP
+    return Promise.resolve(fallbackCopyMethod(text));
+}
+
+/**
+ * Méthode de copie fallback utilisant execCommand (deprecated mais fonctionne)
+ * @param {string} text - Texte à copier
+ * @returns {boolean} - true si succès
+ */
+function fallbackCopyMethod(text) {
+    try {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        
+        // Rendre invisible
+        textArea.style.position = 'fixed';
+        textArea.style.top = '-9999px';
+        textArea.style.left = '-9999px';
+        textArea.style.opacity = '0';
+        
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        // Essayer de copier
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        return successful;
+    } catch (err) {
+        console.error('Fallback copy failed:', err);
+        return false;
+    }
+}
+
+// ============================================================================
+// UI METHODS
+// ============================================================================
 
 // Méthodes UI attachées à LLMUIApp
 LLMUIApp.prototype.setupEventListeners = function() {
@@ -365,18 +426,19 @@ LLMUIApp.prototype.addMessage = function(type, content, files = []) {
                     // Extraire le texte sans HTML
                     const textToCopy = messageContent.innerText || messageContent.textContent;
                     
-                    // Copier dans le presse-papier
-                    navigator.clipboard.writeText(textToCopy).then(function() {
-                        // Feedback visuel
-                        copyBtn.classList.add('copied');
-                        copyBtn.innerHTML = `
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="20 6 9 17 4 12"/>
-                            </svg>
-                        `;
-                        
-                        // Notification
-                        showNotification('Réponse copiée !', 'success');
+                    // Copier dans le presse-papier (compatible HTTP/HTTPS)
+                    copyToClipboardFallback(textToCopy).then(function(success) {
+                        if (success) {
+                            // Feedback visuel
+                            copyBtn.classList.add('copied');
+                            copyBtn.innerHTML = `
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                            `;
+                            
+                            // Notification
+                            showNotification('Réponse copiée !', 'success');
                         
                         // Retour à l'icône normale après 2s
                         setTimeout(function() {
@@ -499,7 +561,7 @@ LLMUIApp.prototype.updateConsensusMessage = function(messageDiv, data) {
     }
 };
 
-// ✅ CORRECTION v2.0.1: Liens de téléchargement markdown → HTML
+// ✅ CORRECTION v0.5.0: Liens de téléchargement markdown → HTML
 LLMUIApp.prototype.formatContent = function(content) {
     if (!content) return '';
     
