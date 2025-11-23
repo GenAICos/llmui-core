@@ -422,11 +422,11 @@ Now provide ONLY the fixes needed:"""
             )
         
         # ⏰ ATTENTE CRITIQUE - Ollama a besoin de temps pour démarrer
-        self.log("⏳ Attente de 60 secondes pour le démarrage complet d'Ollama...", "INFO")
-        for i in range(60):
+        self.log("⏳ Attente de 20 secondes pour le démarrage complet d'Ollama...", "INFO")
+        for i in range(20):
             time.sleep(1)
             if i % 10 == 0:  # Afficher un message toutes les 10 secondes
-                self.log(f"⏰ Attente Ollama... {60-i} secondes restantes", "INFO")
+                self.log(f"⏰ Attente Ollama... {20-i} secondes restantes", "INFO")
         
         # Vérification que Ollama répond
         self.log("Vérification qu'Ollama est opérationnel...", "INFO")
