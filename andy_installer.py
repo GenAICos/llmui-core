@@ -1,18 +1,12 @@
 #!/usr/bin/env python3
 """
 ==============================================================================
-Andy - Assistant DevOps Autonome v0.5.1
+Andy - Assistant DevOps Autonome v0.5.0
 Installation automatisée COMPLÈTE de LLMUI Core
 ==============================================================================
 Auteur: Francois Chalut
-Date: 2025-11-24
+Date: 2025-11-22
 Licence: AGPLv3 + common clause
-
-NOUVEAUTÉS v0.5.1:
-- 📊 Barre de progression pour le téléchargement des modèles Ollama
-- 🎯 Affichage en temps réel de la progression (%, taille téléchargée)
-- 📈 Résumé visuel des téléchargements (succès/échecs)
-- 🎨 Interface utilisateur améliorée pour un meilleur suivi
 
 NOUVEAUTÉS v0.5.0:
 - Merge complet de andy_deploy_source.py dans andy_installer.py
@@ -42,38 +36,6 @@ import time
 # GitHub repository known by Andy
 GITHUB_REPO = "https://github.com/GenAICos/llmui-core.git"
 OLLAMA_BASE_URL = "http://localhost:11434"
-
-class ProgressBar:
-    """Classe pour afficher une barre de progression visuelle"""
-    def __init__(self, total=100, prefix='', suffix='', decimals=1, length=50, fill='█', print_end="\r"):
-        self.total = total
-        self.prefix = prefix
-        self.suffix = suffix
-        self.decimals = decimals
-        self.length = length
-        self.fill = fill
-        self.print_end = print_end
-        self.iteration = 0
-    
-    def update(self, iteration=None):
-        """Met à jour la barre de progression"""
-        if iteration is not None:
-            self.iteration = iteration
-        else:
-            self.iteration += 1
-        
-        percent = ("{0:." + str(self.decimals) + "f}").format(100 * (self.iteration / float(self.total)))
-        filled_length = int(self.length * self.iteration // self.total)
-        bar = self.fill * filled_length + '-' * (self.length - filled_length)
-        
-        print(f'\r{self.prefix} |{bar}| {percent}% {self.suffix}', end=self.print_end)
-        
-        if self.iteration >= self.total: 
-            print()
-    
-    def reset(self):
-        """Réinitialise la barre"""
-        self.iteration = 0
 
 class Andy:
     def __init__(self):
@@ -898,95 +860,8 @@ Now analyze and provide fixes:"""
                 return False
         return False
     
-    def pull_ollama_model_with_progress(self, model_name):
-        """
-        Télécharge un modèle Ollama avec barre de progression en temps réel
-        """
-        self.log(f"📥 Téléchargement du modèle {model_name}...", "INFO")
-        print()  # Ligne vide pour l'affichage
-        
-        try:
-            # Démarrer le processus ollama pull
-            process = subprocess.Popen(
-                f"ollama pull {model_name}",
-                shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                universal_newlines=True,
-                bufsize=1
-            )
-            
-            # Variables pour suivre la progression
-            progress_bar = None
-            last_status = ""
-            
-            # Lire la sortie ligne par ligne
-            for line in process.stdout:
-                line = line.strip()
-                
-                if not line:
-                    continue
-                
-                # Détecter les lignes de progression
-                if "pulling manifest" in line.lower():
-                    print(f"📋 {line}")
-                    
-                elif "pulling" in line.lower() and "%" in line:
-                    # Extraire le pourcentage
-                    match = re.search(r'(\d+)%', line)
-                    if match:
-                        percent = int(match.group(1))
-                        
-                        # Extraire la taille si disponible
-                        size_match = re.search(r'([\d.]+\s*[KMGT]B)/([\d.]+\s*[KMGT]B)', line)
-                        
-                        if size_match:
-                            downloaded_str = size_match.group(1)
-                            total_str = size_match.group(2)
-                            status = f"{downloaded_str}/{total_str}"
-                        else:
-                            status = "Téléchargement"
-                        
-                        # Créer ou mettre à jour la barre de progression
-                        if progress_bar is None or status != last_status:
-                            if progress_bar:
-                                print()  # Nouvelle ligne
-                            progress_bar = ProgressBar(
-                                total=100,
-                                prefix=f'🔽 {model_name}',
-                                suffix=status,
-                                length=40
-                            )
-                            last_status = status
-                        
-                        progress_bar.update(percent)
-                
-                elif "verifying" in line.lower():
-                    if progress_bar:
-                        print()  # Nouvelle ligne après la barre
-                    print(f"✓ {line}")
-                    
-                elif "success" in line.lower():
-                    if progress_bar:
-                        print()
-                    print(f"✅ {line}")
-            
-            # Attendre la fin du processus
-            return_code = process.wait()
-            
-            if return_code == 0:
-                print(f"\n✅ Modèle {model_name} téléchargé avec succès\n")
-                return True
-            else:
-                print(f"\n❌ Échec du téléchargement de {model_name}\n")
-                return False
-                
-        except Exception as e:
-            self.log(f"Erreur lors du téléchargement de {model_name}: {e}", "ERROR")
-            return False
-    
     def install_ollama_and_models(self):
-        """Installe Ollama et télécharge les modèles avec barre de progression"""
+        """Installe Ollama et télécharge les modèles"""
         self.log("Installation d'Ollama...", "INFO")
         success, _ = self.execute_command(
             "curl -fsSL https://ollama.com/install.sh | sh",
@@ -1020,7 +895,7 @@ Now analyze and provide fixes:"""
         self.log("⏳ Attente de 20 secondes pour le démarrage complet d'Ollama...", "INFO")
         for i in range(20):
             time.sleep(1)
-            if i % 5 == 0:  # Afficher un message toutes les 5 secondes
+            if i % 10 == 0:  # Afficher un message toutes les 10 secondes
                 self.log(f"⏰ Attente Ollama... {20-i} secondes restantes", "INFO")
         
         # Vérification que Ollama répond
@@ -1047,40 +922,23 @@ Now analyze and provide fixes:"""
             self.add_note("Ollama ne répond pas après installation", "Installation")
             return False
         
-        # Pull des modèles avec barre de progression - NOUVELLE APPROCHE
+        # Pull des modèles - MAINTENANT Ollama devrait être prêt
         models = ["phi3:3.8b", "gemma2:2b", "granite4:micro-h", "qwen2.5:3b"]
-        
-        print("\n" + "="*70)
-        print("📦 TÉLÉCHARGEMENT DES MODÈLES LLM")
-        print("="*70)
-        print(f"Nombre de modèles à télécharger: {len(models)}")
-        print("Cela peut prendre plusieurs minutes selon votre connexion internet...")
-        print("="*70 + "\n")
-        
-        successful_downloads = 0
-        failed_downloads = []
-        
-        for idx, model in enumerate(models, 1):
-            print(f"\n[{idx}/{len(models)}] Modèle: {model}")
-            print("-" * 70)
-            
-            if self.pull_ollama_model_with_progress(model):
-                successful_downloads += 1
+        for model in models:
+            self.log(f"📥 Téléchargement du modèle {model}...", "INFO")
+            success, output = self.execute_command(
+                f"ollama pull {model}",
+                f"Pull modèle {model}",
+                3
+            )
+            if success:
+                self.log(f"✅ Modèle {model} téléchargé avec succès", "SUCCESS")
             else:
-                failed_downloads.append(model)
                 self.log(f"❌ Échec du téléchargement de {model}", "WARNING")
+                if "server not responding" in output:
+                    self.log(f"🔧 Problème de connexion à Ollama pour {model}", "ERROR")
         
-        # Résumé
-        print("\n" + "="*70)
-        print("📊 RÉSUMÉ DES TÉLÉCHARGEMENTS")
-        print("="*70)
-        print(f"✅ Réussis: {successful_downloads}/{len(models)}")
-        if failed_downloads:
-            print(f"❌ Échoués: {len(failed_downloads)}/{len(models)}")
-            print(f"   Modèles échoués: {', '.join(failed_downloads)}")
-        print("="*70 + "\n")
-        
-        return successful_downloads > 0
+        return True
     
     def hash_password_secure(self, password):
         """Hash sécurisé du mot de passe avec bcrypt"""
