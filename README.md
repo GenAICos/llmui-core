@@ -14,7 +14,7 @@ Développé par **Francois Chalut** - Une solution québécoise pour l'intellige
 
 ## 🎯 Vue d'ensemble
 
-LLMUI Entreprise est une plateforme innovante de consensus entre plusieurs modèles de langage (LLM), permettant de:
+LLMUI Core est une plateforme innovante de consensus entre plusieurs modèles de langage (LLM), permettant de:
 
 - **Orchestrer plusieurs modèles IA** en parallèle (workers + mergers)
 - **Obtenir des réponses par consensus** pour une qualité supérieure
@@ -107,7 +107,7 @@ sudo apt update && sudo apt upgrade -y
 sudo apt install -y git python3 python3-pip
 ```
 
-### Étape 3: Installation LLMUI Entreprise dans WSL
+### Étape 3: Installation LLMUI Core dans WSL
 
 ```bash
 # Cloner le dépôt
@@ -150,7 +150,7 @@ swap=4GB
 
 ## 🚀 Installation rapide avec Andy
 
-**Andy** est l'assistant DevOps autonome qui automatise l'installation complète de LLMUI Entreprise.
+**Andy** est l'assistant DevOps autonome qui automatise l'installation complète de LLMUI Core.
 
 ### Installation en une commande
 
@@ -303,7 +303,7 @@ security:
 
 ### Accès à l'interface
 
-Une fois installé, accédez à LLMUI Entreprise via votre navigateur:
+Une fois installé, accédez à LLMUI Core via votre navigateur:
 
 **Linux:**
 ```
@@ -360,7 +360,7 @@ curl -X POST http://localhost:5000/api/chat \
 
 ### ✨ Consensus multi-modèles
 
-LLMUI Entreprise utilise une approche unique:
+LLMUI Core utilise une approche unique:
 1. **Workers analysent** le prompt en parallèle
 2. **Merger synthétise** les réponses en consensus
 3. **Qualité supérieure** grâce à la diversité des modèles
@@ -503,7 +503,7 @@ Voir [LICENSE](LICENSE) pour plus de détails.
 
 ## 🌟 Philosophie du projet
 
-LLMUI Entreprise s'inscrit dans une vision de **souveraineté numérique québécoise**:
+LLMUI Core s'inscrit dans une vision de **souveraineté numérique québécoise**:
 
 - 🇨🇦 **Local d'abord**: Hébergement et contrôle complets
 - 🔓 **Open Architecture**: Extensible et adaptable
