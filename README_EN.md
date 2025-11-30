@@ -360,7 +360,7 @@ curl -X POST http://localhost:5000/api/chat \
 
 ### ✨ Multi-Model Consensus
 
-LLMUI Core uses a unique approach:
+LLMUI core uses a unique approach:
 1. **Workers analyze** the prompt in parallel
 2. **Merger synthesizes** responses into consensus
 3. **Superior quality** thanks to model diversity
@@ -486,7 +486,7 @@ sudo python3 andy_start_services.py
 This project is developed by **Francois Chalut**
 
 For any questions or contributions:
-- **Email**: contact@llmui.org
+- **Email**: francois.chalut@gmail.com
 - **Issues**: [GitHub Issues](https://github.com/GenAICos/llmui-core/issues)
 
 ---
