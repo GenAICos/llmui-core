@@ -1,4 +1,4 @@
-# LLMUI Entreprise v0.5.0
+# LLMUI Core v0.5.0
 
 [![AGPL v3](https://img.shields.io/badge/AGPL%20v3-Open%20Source-green.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Commons Clause](https://img.shields.io/badge/Commons%20Clause-No%20Commercial-red.svg)](LICENSE)
