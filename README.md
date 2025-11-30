@@ -1,4 +1,4 @@
-# LLMUI Core v0.5.0
+# LLMUI Entreprise v0.5.0
 
 [![AGPL v3](https://img.shields.io/badge/AGPL%20v3-Open%20Source-green.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Commons Clause](https://img.shields.io/badge/Commons%20Clause-No%20Commercial-red.svg)](LICENSE)
@@ -14,7 +14,7 @@ Développé par **Francois Chalut** - Une solution québécoise pour l'intellige
 
 ## 🎯 Vue d'ensemble
 
-LLMUI Core est une plateforme innovante de consensus entre plusieurs modèles de langage (LLM), permettant de:
+LLMUI Entreprise est une plateforme innovante de consensus entre plusieurs modèles de langage (LLM), permettant de:
 
 - **Orchestrer plusieurs modèles IA** en parallèle (workers + mergers)
 - **Obtenir des réponses par consensus** pour une qualité supérieure
@@ -107,7 +107,7 @@ sudo apt update && sudo apt upgrade -y
 sudo apt install -y git python3 python3-pip
 ```
 
-### Étape 3: Installation LLMUI Core dans WSL
+### Étape 3: Installation LLMUI Entreprise dans WSL
 
 ```bash
 # Cloner le dépôt
@@ -150,7 +150,7 @@ swap=4GB
 
 ## 🚀 Installation rapide avec Andy
 
-**Andy** est l'assistant DevOps autonome qui automatise l'installation complète de LLMUI Core.
+**Andy** est l'assistant DevOps autonome qui automatise l'installation complète de LLMUI Entreprise.
 
 ### Installation en une commande
 
@@ -303,7 +303,7 @@ security:
 
 ### Accès à l'interface
 
-Une fois installé, accédez à LLMUI Core via votre navigateur:
+Une fois installé, accédez à LLMUI Entreprise via votre navigateur:
 
 **Linux:**
 ```
@@ -360,7 +360,7 @@ curl -X POST http://localhost:5000/api/chat \
 
 ### ✨ Consensus multi-modèles
 
-LLMUI Core utilise une approche unique:
+LLMUI Entreprise utilise une approche unique:
 1. **Workers analysent** le prompt en parallèle
 2. **Merger synthétise** les réponses en consensus
 3. **Qualité supérieure** grâce à la diversité des modèles
@@ -503,7 +503,7 @@ Voir [LICENSE](LICENSE) pour plus de détails.
 
 ## 🌟 Philosophie du projet
 
-LLMUI Core s'inscrit dans une vision de **souveraineté numérique québécoise**:
+LLMUI Entreprise s'inscrit dans une vision de **souveraineté numérique québécoise**:
 
 - 🇨🇦 **Local d'abord**: Hébergement et contrôle complets
 - 🔓 **Open Architecture**: Extensible et adaptable
