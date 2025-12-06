@@ -1,201 +1,118 @@
 #!/bin/bash
+# ==============================================================================
+# LLMUI Core - Installation Script v0.5.0 - CORRIGÉ
+# ==============================================================================
+# Installation automatisée de LLMUI Core avec authentification
+# Base de données SYNCHRONISÉE avec llmui_backend.py
+# ==============================================================================
+
+set -e
 
 # ============================================================================
-# LLMUI-CORE - Installation Script v0.5.0
-# ============================================================================
-# Description: Interactive installation script for LLMUI-CORE system
-# Author: Francois Chalut
-# Version: 0.5
-# License: See LICENSE file
-# 
-# CORRECTIONS v0.5.0:
-# - FIX CRITIQUE: Schéma de base de données corrigé (id INTEGER au lieu de TEXT)
-# - FIX CRITIQUE: Hash bcrypt/PBKDF2 au lieu de SHA256
-# - Ajout de la création d'utilisateur admin dans SQLite
-# - Gestion correcte des caractères spéciaux (!! @ # $ etc.) via Python
-# - Cohérence totale avec andy_installer.py et llmui_backend.py
+# VARIABLES GLOBALES
 # ============================================================================
 
-set -e  # Exit on error
-
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-# Configuration
 INSTALL_DIR="/opt/llmui-core"
 DATA_DIR="/var/lib/llmui"
+LOG_DIR="/var/log/llmui"
 SERVICE_USER="llmui"
-PYTHON_MIN_VERSION="3.8"
+SERVICE_GROUP="llmui"
 DB_PATH="$DATA_DIR/llmui.db"
 
-# Logging functions
+# ============================================================================
+# FONCTIONS UTILITAIRES
+# ============================================================================
+
 log_info() {
-    echo -e "${BLUE}ℹ️  $1${NC}"
+    echo -e "\e[34m[INFO]\e[0m $1"
 }
 
 log_success() {
-    echo -e "${GREEN}✅ $1${NC}"
-}
-
-log_warning() {
-    echo -e "${YELLOW}⚠️  $1${NC}"
+    echo -e "\e[32m[✓]\e[0m $1"
 }
 
 log_error() {
-    echo -e "${RED}❌ Erreur: $1${NC}"
+    echo -e "\e[31m[✗]\e[0m $1"
+}
+
+log_warning() {
+    echo -e "\e[33m[⚠]\e[0m $1"
 }
 
 log_step() {
-    echo -e "${BLUE}⚙️  $1${NC}"
+    echo ""
+    echo -e "\e[1;36m==== $1 ====\e[0m"
+    echo ""
 }
 
-# Error handler
-handle_error() {
-    local exit_code=$?
-    local line_number=$1
-    log_error "Installation failed at line $line_number (exit code: $exit_code)"
-    log_info "Consultez le fichier de log pour plus de détails"
-    exit 1
-}
+# ============================================================================
+# VÉRIFICATION ROOT
+# ============================================================================
 
-trap 'handle_error ${LINENO}' ERR
-
-# Check if running as root
 check_root() {
     if [[ $EUID -ne 0 ]]; then
-        log_error "Ce script doit être exécuté en tant que root (sudo)"
+        log_error "Ce script doit être exécuté en tant que root"
+        echo "Utilisez: sudo $0"
         exit 1
     fi
+    log_success "Privilèges root confirmés"
 }
 
-# Detect OS and package manager
-detect_os() {
-    log_step "Détection du système d'exploitation..."
-    
-    if [[ -f /etc/os-release ]]; then
-        . /etc/os-release
-        OS=$ID
-        OS_VERSION=$VERSION_ID
-        log_info "OS détecté: $OS $OS_VERSION"
-    else
-        log_error "Impossible de détecter le système d'exploitation"
-        exit 1
-    fi
-    
-    # Detect package manager
-    if command -v apt-get &> /dev/null; then
-        PKG_MANAGER="apt"
-    elif command -v yum &> /dev/null; then
-        PKG_MANAGER="yum"
-    elif command -v dnf &> /dev/null; then
-        PKG_MANAGER="dnf"
-    else
-        log_error "Gestionnaire de paquets non supporté"
-        exit 1
-    fi
-    
-    log_success "Gestionnaire de paquets: $PKG_MANAGER"
-}
+# ============================================================================
+# VÉRIFICATION PRÉREQUIS
+# ============================================================================
 
-# Check system requirements
-check_requirements() {
-    log_step "Vérification des prérequis système..."
+check_prerequisites() {
+    log_step "Vérification des prérequis"
     
-    # Check Python
-    if command -v python3 &> /dev/null; then
-        PYTHON_VERSION=$(python3 --version | cut -d' ' -f2 | cut -d'.' -f1,2)
-        log_info "Python $PYTHON_VERSION détecté"
-        
-        if (( $(echo "$PYTHON_VERSION >= $PYTHON_MIN_VERSION" | bc -l) )); then
-            log_success "Version Python compatible"
-        else
-            log_error "Python $PYTHON_MIN_VERSION ou supérieur requis"
-            exit 1
-        fi
-    else
+    # Check Python 3
+    if ! command -v python3 &> /dev/null; then
         log_error "Python 3 n'est pas installé"
         exit 1
     fi
+    log_success "Python 3 détecté: $(python3 --version)"
     
-    # Check available disk space
-    AVAILABLE_SPACE=$(df -BG / 2>/dev/null | awk 'NR==2 {print $4}' | sed 's/G//' || echo "1000")
-    if [[ $AVAILABLE_SPACE -lt 5 ]]; then
-        log_warning "Espace disque faible: ${AVAILABLE_SPACE}G disponible"
+    # Check pip
+    if ! python3 -m pip --version &> /dev/null; then
+        log_error "pip n'est pas disponible"
+        exit 1
+    fi
+    log_success "pip est disponible"
+    
+    # Check Ollama
+    if ! command -v ollama &> /dev/null; then
+        log_warning "Ollama n'est pas installé - requis pour l'IA"
     else
-        log_success "Espace disque suffisant: ${AVAILABLE_SPACE}G disponible"
+        log_success "Ollama détecté"
     fi
 }
 
-# Install system dependencies
-install_dependencies() {
-    log_step "Installation des dépendances système..."
-    
-    case $PKG_MANAGER in
-        apt)
-            apt-get update
-            apt-get install -y \
-                python3-pip \
-                python3-venv \
-                python3-dev \
-                python3-full \
-                build-essential \
-                git \
-                curl \
-                wget \
-                nginx \
-                certbot \
-                python3-certbot-nginx \
-                ufw \
-                fail2ban \
-                sqlite3 \
-                net-tools \
-                bc
-            ;;
-        yum|dnf)
-            $PKG_MANAGER install -y \
-                python3-pip \
-                python3-devel \
-                gcc \
-                git \
-                curl \
-                wget \
-                nginx \
-                certbot \
-                python3-certbot-nginx \
-                firewalld \
-                fail2ban \
-                sqlite \
-                net-tools \
-                bc
-            ;;
-    esac
-    
-    log_success "Dépendances système installées"
-}
+# ============================================================================
+# CRÉATION SERVICE USER
+# ============================================================================
 
-# Create service user
-create_user() {
-    log_step "Création de l'utilisateur système..."
+create_service_user() {
+    log_step "Création de l'utilisateur système"
     
-    if id "$SERVICE_USER" &>/dev/null; then
-        log_info "L'utilisateur $SERVICE_USER existe déjà"
-    else
+    if ! id "$SERVICE_USER" &>/dev/null; then
         useradd -r -s /bin/bash -d "$INSTALL_DIR" -m "$SERVICE_USER"
         log_success "Utilisateur $SERVICE_USER créé"
+    else
+        log_info "Utilisateur $SERVICE_USER existe déjà"
     fi
 }
 
-# Setup directory structure
-setup_directories() {
-    log_step "Configuration de la structure des répertoires..."
+# ============================================================================
+# CRÉATION STRUCTURE RÉPERTOIRES
+# ============================================================================
+
+create_directories() {
+    log_step "Création de la structure des répertoires"
     
     # Create main directories
-    mkdir -p "$INSTALL_DIR"/{logs,backups,ssl,sessions,scripts}
+    mkdir -p "$INSTALL_DIR"/{src,web,scripts,ssl,docs}
     mkdir -p "$DATA_DIR"
+    mkdir -p "$LOG_DIR"
     
     # Set permissions
     chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
@@ -206,9 +123,12 @@ setup_directories() {
     log_success "Structure des répertoires créée"
 }
 
-# Copy application files
+# ============================================================================
+# COPIE FICHIERS
+# ============================================================================
+
 copy_files() {
-    log_step "Copie des fichiers de l'application..."
+    log_step "Copie des fichiers de l'application"
     
     # Copy source files
     if [[ -d "src" ]]; then
@@ -245,9 +165,12 @@ copy_files() {
     log_success "Fichiers copiés"
 }
 
-# Install Python packages in virtual environment
+# ============================================================================
+# INSTALLATION PACKAGES PYTHON
+# ============================================================================
+
 install_python_packages() {
-    log_step "Installation packages Python dans l'environnement virtuel..."
+    log_step "Installation packages Python dans l'environnement virtuel"
     
     # Create virtual environment as service user
     if [[ ! -d "$INSTALL_DIR/venv" ]]; then
@@ -267,27 +190,34 @@ install_python_packages() {
     else
         log_info "Installation des packages essentiels..."
         su - "$SERVICE_USER" -c "$INSTALL_DIR/venv/bin/pip install \
-            fastapi==0.104.1 \
-            uvicorn[standard]==0.24.0 \
+            fastapi==0.121.0 \
+            uvicorn[standard]==0.38.0 \
             httpx==0.28.1 \
             pyyaml==6.0.1 \
             python-multipart==0.0.6 \
-            pytz==2024.1 \
-            pydantic==2.5.0"
+            pytz==2025.2 \
+            pydantic==2.12.3 \
+            bcrypt==4.1.2"
     fi
     
     log_success "Packages Python installés dans le venv"
 }
 
-# Initialize database with admin user
+# ============================================================================
+# INITIALISATION BASE DE DONNÉES
+# ============================================================================
+
 initialize_database() {
-    log_step "Initialisation de la base de données..."
+    log_step "Initialisation de la base de données"
     
     # Create Python script for database initialization
     cat > /tmp/init_db.py << 'EOFPYTHON'
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Script d'initialisation de la base de données - v0.5.0 CORRIGÉ"""
+"""
+Script d'initialisation de la base de données - v0.5.0 CORRIGÉ
+SCHÉMA SYNCHRONISÉ avec llmui_backend.py et andy_installer.py
+"""
 import sqlite3
 import hashlib
 import os
@@ -321,48 +251,77 @@ def hash_password_secure(password):
 
 
 def create_schema(conn):
-    """Crée le schéma de la base"""
+    """
+    Crée le schéma de la base - SYNCHRONISÉ avec llmui_backend.py
+    """
     cursor = conn.cursor()
     
-    # Table users - SCHÉMA CORRIGÉ v0.5.0
+    # ========================================================================
+    # TABLE USERS - pour l'authentification
+    # ========================================================================
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
+            username TEXT NOT NULL UNIQUE,
             password_hash TEXT NOT NULL,
             email TEXT,
-            is_admin INTEGER DEFAULT 0,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            is_admin INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
             last_login TEXT
         )
     ''')
     
-    # Table conversations - SCHÉMA CORRIGÉ v0.5.0
-    cursor.execute('''
+    # ========================================================================
+    # TABLE CONVERSATIONS - stockage conversations LLM
+    # SCHÉMA EXACT de llmui_backend.py DatabaseManager.init_database()
+    # ========================================================================
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS conversations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            title TEXT NOT NULL,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+            session_id TEXT NOT NULL,
+            prompt TEXT NOT NULL,
+            response TEXT NOT NULL,
+            model TEXT,
+            worker_models TEXT,
+            merger_model TEXT,
+            processing_time REAL,
+            timestamp TEXT NOT NULL,
+            mode TEXT DEFAULT 'simple'
         )
-    ''')
+    """)
     
-    # Table messages - SCHÉMA CORRIGÉ v0.5.0
-    cursor.execute('''
+    # ========================================================================
+    # TABLE MESSAGES - contexte conversationnel
+    # SCHÉMA EXACT de llmui_backend.py
+    # ========================================================================
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            conversation_id INTEGER NOT NULL,
+            session_id TEXT NOT NULL,
             role TEXT NOT NULL,
             content TEXT NOT NULL,
-            model TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (conversation_id) REFERENCES conversations (id) ON DELETE CASCADE
+            timestamp TEXT NOT NULL
         )
-    ''')
+    """)
     
-    # Table stats
+    # ========================================================================
+    # TABLE EMBEDDINGS - recherche sémantique
+    # SCHÉMA EXACT de llmui_backend.py
+    # ========================================================================
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS embeddings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            message_id INTEGER NOT NULL,
+            embedding BLOB NOT NULL,
+            timestamp TEXT NOT NULL,
+            FOREIGN KEY (message_id) REFERENCES messages(id)
+        )
+    """)
+    
+    # ========================================================================
+    # TABLE STATS - statistiques d'utilisation
+    # ========================================================================
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS stats (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -371,12 +330,14 @@ def create_schema(conn):
             completion_tokens INTEGER DEFAULT 0,
             total_tokens INTEGER DEFAULT 0,
             duration_ms INTEGER DEFAULT 0,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
             success INTEGER DEFAULT 1
         )
     ''')
     
-    # Table sessions - SCHÉMA CORRIGÉ v0.5.0
+    # ========================================================================
+    # TABLE SESSIONS - gestion sessions web
+    # ========================================================================
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS sessions (
             session_id TEXT PRIMARY KEY,
@@ -389,6 +350,8 @@ def create_schema(conn):
     ''')
     
     conn.commit()
+    print("✓ Schéma de base de données créé (synchronisé avec llmui_backend.py)")
+
 
 def create_admin_user(conn, username, password):
     """Crée l'utilisateur administrateur - v0.5.0 CORRIGÉ"""
@@ -420,6 +383,7 @@ def create_admin_user(conn, username, password):
     
     return password_hash
 
+
 if __name__ == "__main__":
     try:
         # Saisie des informations
@@ -439,355 +403,199 @@ if __name__ == "__main__":
                 print("❌ Les mots de passe ne correspondent pas")
         
         # Créer/ouvrir la base
+        os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
         conn = sqlite3.connect(DB_PATH)
         
         # Créer le schéma
         create_schema(conn)
-        print("✓ Schéma de base de données créé")
         
         # Créer l'utilisateur
         password_hash = create_admin_user(conn, username, password)
         
+        print(f"\n✓ Base de données initialisée: {DB_PATH}")
+        print(f"✓ Utilisateur: {username}")
+        print(f"✓ Hash: {password_hash[:50]}...")
+        
         conn.close()
         
-        # Afficher les informations
-        print(f"\n{'='*60}")
-        print("✓ Base de données initialisée avec succès")
-        print(f"{'='*60}")
-        print(f"\nInformations de connexion:")
-        print(f"  Username: {username}")
-        print(f"  Password: {password}")
-        print(f"  Hash SHA256: {password_hash[:50]}...")
-        print(f"\n⚠️  NOTEZ CES INFORMATIONS - Vous en aurez besoin pour vous connecter")
-        print(f"{'='*60}\n")
-        
-        sys.exit(0)
-        
+    except KeyboardInterrupt:
+        print("\n\nInterruption utilisateur")
+        sys.exit(1)
     except Exception as e:
         print(f"\n❌ Erreur: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
 EOFPYTHON
-    
+
+    # Execute the database initialization script
     chmod +x /tmp/init_db.py
-    
-    # Exécuter le script Python
     python3 /tmp/init_db.py
     
-    if [[ $? -eq 0 ]]; then
-        # Set permissions on database
-        chown "$SERVICE_USER:$SERVICE_USER" "$DB_PATH"
-        chmod 660 "$DB_PATH"
-        log_success "Base de données initialisée"
-    else
-        log_error "Échec de l'initialisation de la base de données"
-        exit 1
-    fi
+    # Set permissions on database
+    chown "$SERVICE_USER:$SERVICE_USER" "$DB_PATH"
+    chmod 600 "$DB_PATH"
     
-    # Cleanup
-    rm -f /tmp/init_db.py
+    log_success "Base de données initialisée"
 }
 
-# Configure systemd services
-configure_services() {
-    log_step "Configuration des services systemd..."
+# ============================================================================
+# GÉNÉRATION CERTIFICATS SSL
+# ============================================================================
+
+generate_ssl_certificates() {
+    log_step "Génération des certificats SSL auto-signés"
+    
+    if [[ -f "$INSTALL_DIR/ssl/llmui.crt" ]]; then
+        log_info "Certificats SSL déjà présents"
+        return
+    fi
+    
+    # Create SSL directory
+    mkdir -p "$INSTALL_DIR/ssl"
+    
+    # Generate self-signed certificate
+    openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+        -keyout "$INSTALL_DIR/ssl/llmui.key" \
+        -out "$INSTALL_DIR/ssl/llmui.crt" \
+        -subj "/C=CA/ST=Quebec/L=Montreal/O=LLMUI/CN=llmui.local" \
+        2>/dev/null
+    
+    chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR/ssl"
+    chmod 600 "$INSTALL_DIR/ssl"/*
+    
+    log_success "Certificats SSL générés"
+}
+
+# ============================================================================
+# CRÉATION SERVICES SYSTEMD
+# ============================================================================
+
+create_systemd_services() {
+    log_step "Création des services systemd"
     
     # Backend service
-    cat > /etc/systemd/system/llmui-backend.service <<EOF
+    cat > /etc/systemd/system/llmui-backend.service << EOF
 [Unit]
-Description=LLMUI Backend Service
+Description=LLMUI Core Backend
 After=network.target
 
 [Service]
 Type=simple
 User=$SERVICE_USER
+Group=$SERVICE_GROUP
 WorkingDirectory=$INSTALL_DIR
-Environment="PATH=$INSTALL_DIR/venv/bin:/usr/local/bin:/usr/bin:/bin"
-Environment="PYTHONPATH=$INSTALL_DIR/src"
-Environment="LLMUI_DB_PATH=$DB_PATH"
+Environment="PATH=$INSTALL_DIR/venv/bin"
 ExecStart=$INSTALL_DIR/venv/bin/python $INSTALL_DIR/src/llmui_backend.py
 Restart=always
 RestartSec=10
-StandardOutput=journal
-StandardError=journal
-
-# Security settings
-NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=true
-ReadWritePaths=$DATA_DIR $INSTALL_DIR/logs $INSTALL_DIR/sessions
 
 [Install]
 WantedBy=multi-user.target
 EOF
-
+    
     # Proxy service
-    cat > /etc/systemd/system/llmui-proxy.service <<EOF
+    cat > /etc/systemd/system/llmui-proxy.service << EOF
 [Unit]
-Description=LLMUI Proxy Service
+Description=LLMUI Core Proxy
 After=network.target llmui-backend.service
 
 [Service]
 Type=simple
 User=$SERVICE_USER
+Group=$SERVICE_GROUP
 WorkingDirectory=$INSTALL_DIR
-Environment="PATH=$INSTALL_DIR/venv/bin:/usr/local/bin:/usr/bin:/bin"
-Environment="PYTHONPATH=$INSTALL_DIR/src"
+Environment="PATH=$INSTALL_DIR/venv/bin"
 ExecStart=$INSTALL_DIR/venv/bin/python $INSTALL_DIR/src/llmui_proxy.py
 Restart=always
 RestartSec=10
-StandardOutput=journal
-StandardError=journal
-
-# Security settings
-NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=true
-ReadWritePaths=$DATA_DIR $INSTALL_DIR/logs
 
 [Install]
 WantedBy=multi-user.target
 EOF
-
+    
     # Reload systemd
     systemctl daemon-reload
     
-    log_success "Services systemd configurés"
+    log_success "Services systemd créés"
 }
 
-# Configure Nginx
-configure_nginx() {
-    log_step "Configuration de Nginx..."
-    
-    # Backup existing config if it exists
-    if [[ -f /etc/nginx/sites-available/llmui ]]; then
-        cp /etc/nginx/sites-available/llmui /etc/nginx/sites-available/llmui.bak.$(date +%Y%m%d_%H%M%S)
-    fi
-    
-    cat > /etc/nginx/sites-available/llmui <<'EOF'
-server {
-    listen 80;
-    server_name _;
+# ============================================================================
+# DÉMARRAGE SERVICES
+# ============================================================================
 
-    # Security headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-
-    # Root directory
-    root /opt/llmui-core/web;
-    index index.html login.html;
-
-    # Static files
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    # API proxy to backend
-    location /api/ {
-        proxy_pass http://127.0.0.1:5000/api/;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        
-        # Timeouts
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
-    }
-
-    # WebSocket support for streaming
-    location /ws/ {
-        proxy_pass http://127.0.0.1:5000/ws/;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        
-        # WebSocket timeouts
-        proxy_read_timeout 3600s;
-        proxy_send_timeout 3600s;
-    }
-
-    # Logs
-    access_log /var/log/nginx/llmui-access.log;
-    error_log /var/log/nginx/llmui-error.log;
-}
-EOF
-
-    # Enable site
-    ln -sf /etc/nginx/sites-available/llmui /etc/nginx/sites-enabled/
-    
-    # Remove default site
-    rm -f /etc/nginx/sites-enabled/default
-    
-    # Test configuration
-    if nginx -t 2>/dev/null; then
-        systemctl reload nginx
-        log_success "Nginx configuré et rechargé"
-    else
-        log_error "Erreur de configuration Nginx"
-        exit 1
-    fi
-}
-
-# Configure firewall
-configure_firewall() {
-    log_step "Configuration du pare-feu..."
-    
-    case $PKG_MANAGER in
-        apt)
-            # UFW configuration
-            if command -v ufw &> /dev/null; then
-                ufw --force enable
-                ufw default deny incoming
-                ufw default allow outgoing
-                ufw allow ssh
-                ufw allow http
-                ufw allow https
-                log_success "UFW configuré"
-            else
-                log_warning "UFW non disponible"
-            fi
-            ;;
-        yum|dnf)
-            # Firewalld configuration
-            if command -v firewall-cmd &> /dev/null; then
-                systemctl enable --now firewalld
-                firewall-cmd --permanent --add-service=ssh
-                firewall-cmd --permanent --add-service=http
-                firewall-cmd --permanent --add-service=https
-                firewall-cmd --reload
-                log_success "Firewalld configuré"
-            else
-                log_warning "Firewalld non disponible"
-            fi
-            ;;
-    esac
-}
-
-# Start services
 start_services() {
-    log_step "Démarrage des services..."
+    log_step "Démarrage des services"
     
     # Enable and start backend
     systemctl enable llmui-backend
     systemctl start llmui-backend
+    log_success "Service backend démarré"
     
-    # Wait a bit
+    # Wait for backend
     sleep 3
     
-    # Check backend status
-    if systemctl is-active --quiet llmui-backend; then
-        log_success "llmui-backend démarré"
-    else
-        log_error "Échec du démarrage de llmui-backend"
-        log_info "Vérifiez les logs: journalctl -u llmui-backend -n 50"
-        exit 1
-    fi
-    
-    # Enable and start proxy if it exists
-    if [[ -f "$INSTALL_DIR/src/llmui_proxy.py" ]]; then
-        systemctl enable llmui-proxy
-        systemctl start llmui-proxy
-        sleep 2
-        
-        if systemctl is-active --quiet llmui-proxy; then
-            log_success "llmui-proxy démarré"
-        else
-            log_warning "llmui-proxy n'a pas démarré (peut-être non nécessaire)"
-        fi
-    fi
-    
-    # Enable and start nginx
-    systemctl enable nginx
-    systemctl restart nginx
-    
-    if systemctl is-active --quiet nginx; then
-        log_success "nginx démarré"
-    else
-        log_error "Échec du démarrage de nginx"
-        exit 1
-    fi
-    
-    log_success "Services démarrés"
+    # Enable and start proxy
+    systemctl enable llmui-proxy
+    systemctl start llmui-proxy
+    log_success "Service proxy démarré"
 }
 
-# Display installation summary
+# ============================================================================
+# RÉSUMÉ INSTALLATION
+# ============================================================================
+
 show_summary() {
-    local ip_address=$(hostname -I | awk '{print $1}')
-    
     echo ""
-    echo "╔═══════════════════════════════════════════════════════════════╗"
-    echo "║           LLMUI-CORE Installation Terminée ✅                  ║"
-    echo "╚═══════════════════════════════════════════════════════════════╝"
+    echo "═══════════════════════════════════════════════════════════════"
+    echo "  ✓ Installation LLMUI Core terminée avec succès !"
+    echo "═══════════════════════════════════════════════════════════════"
     echo ""
-    log_success "Installation réussie!"
+    echo "📁 Répertoire d'installation : $INSTALL_DIR"
+    echo "💾 Base de données          : $DB_PATH"
+    echo "📋 Logs                     : $LOG_DIR"
     echo ""
-    echo "🌐 Informations d'accès:"
-    echo "   URL locale: http://localhost"
-    echo "   URL réseau: http://$ip_address"
+    echo "🔧 Services systemd :"
+    echo "   • Backend : systemctl status llmui-backend"
+    echo "   • Proxy   : systemctl status llmui-proxy"
     echo ""
-    echo "📁 Répertoires:"
-    echo "   Installation: $INSTALL_DIR"
-    echo "   Environnement virtuel: $INSTALL_DIR/venv"
-    echo "   Logs: $INSTALL_DIR/logs"
-    echo "   Base de données: $DB_PATH"
+    echo "🌐 Accès interface web :"
+    echo "   • HTTP  : http://$(hostname -I | awk '{print $1}'):8000"
+    echo "   • HTTPS : https://$(hostname -I | awk '{print $1}'):8443"
     echo ""
-    echo "🔧 Commandes utiles:"
-    echo "   Status: sudo systemctl status llmui-backend llmui-proxy"
-    echo "   Logs: sudo journalctl -u llmui-backend -f"
-    echo "   Restart: sudo systemctl restart llmui-backend llmui-proxy nginx"
-    echo "   Activer venv: source $INSTALL_DIR/venv/bin/activate"
+    echo "📚 Commandes utiles :"
+    echo "   • Voir logs backend : journalctl -u llmui-backend -f"
+    echo "   • Voir logs proxy   : journalctl -u llmui-proxy -f"
+    echo "   • Redémarrer        : systemctl restart llmui-backend llmui-proxy"
     echo ""
-    echo "🔐 Connexion:"
-    echo "   Utilisez les identifiants créés lors de l'initialisation de la base"
+    echo "═══════════════════════════════════════════════════════════════"
     echo ""
 }
 
-# Main installation flow
+# ============================================================================
+# MAIN
+# ============================================================================
+
 main() {
     clear
-    echo "╔═══════════════════════════════════════════════════════════════╗"
-    echo "║            LLMUI-CORE - Installation Interactive              ║"
-    echo "║                     Version 0.5.0                             ║"
-    echo "╚═══════════════════════════════════════════════════════════════╝"
+    
+    echo "═══════════════════════════════════════════════════════════════"
+    echo "  LLMUI Core - Installation Script v0.5.0"
+    echo "═══════════════════════════════════════════════════════════════"
     echo ""
     
     check_root
-    detect_os
-    check_requirements
-    
-    echo ""
-    read -p "Continuer l'installation? (o/N) " -n 1 -r
-    echo ""
-    if [[ ! $REPLY =~ ^[OoYy]$ ]]; then
-        log_info "Installation annulée"
-        exit 0
-    fi
-    
-    install_dependencies
-    create_user
-    setup_directories
+    check_prerequisites
+    create_service_user
+    create_directories
     copy_files
     install_python_packages
-    initialize_database     # ← NOUVELLE ÉTAPE
-    configure_services
-    configure_nginx
-    configure_firewall
+    initialize_database
+    generate_ssl_certificates
+    create_systemd_services
     start_services
     show_summary
 }
 
-# Run main function
-main "$@"
+# Execute main
+main
