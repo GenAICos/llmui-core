@@ -1,0 +1,62 @@
+/* ============================================================================
+   LLMUI Core v0.5.0 - Model Selection Styles
+   Styles pour la grille de sélection des modèles workers
+   ============================================================================ */
+
+.model-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.model-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-card, #334155);
+    border: 2px solid var(--border, rgba(148, 163, 184, 0.2));
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.model-checkbox:hover {
+    background: var(--bg-hover, #475569);
+    border-color: var(--border-cyan, rgba(6, 182, 212, 0.3));
+    transform: translateY(-2px);
+}
+
+.model-checkbox input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--cyan, #06b6d4);
+}
+
+.model-checkbox input[type="checkbox"]:checked + span {
+    color: var(--cyan, #06b6d4);
+    font-weight: 600;
+}
+
+.model-checkbox span {
+    flex: 1;
+    font-size: 0.9rem;
+    color: var(--text-primary, #f1f5f9);
+    transition: color 0.2s ease;
+}
+
+/* Style quand la checkbox est cochée */
+.model-checkbox:has(input:checked) {
+    background: rgba(6, 182, 212, 0.1);
+    border-color: var(--cyan, #06b6d4);
+}
+
+/* Responsive - mobile */
+@media (max-width: 768px) {
+    .model-grid {
+        grid-template-columns: 1fr;
+    }
+}
