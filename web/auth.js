@@ -87,10 +87,13 @@ class AuthManager {
             });
 
             if (response.ok) {
-                const data = await response.json();
-                if (data.authenticated) {
-                    // Already logged in, redirect to main interface
-                    window.location.href = '/index.html';
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    const data = await response.json();
+                    if (data.authenticated) {
+                        // Already logged in, redirect to main interface
+                        window.location.href = '/index.html';
+                    }
                 }
             }
         } catch (error) {
@@ -128,9 +131,22 @@ class AuthManager {
                 })
             });
 
-            // CORRECTION ASSURÉE PAR LE BACKEND: Le serveur doit maintenant toujours retourner du JSON,
-            // même en cas de 401. Si response.ok est false, on s'attend à lire le message d'erreur dans 'data'.
-            const data = await response.json();
+            // Vérifier le Content-Type pour savoir comment parser la réponse
+            const contentType = response.headers.get('content-type');
+            let data;
+            
+            if (contentType && contentType.includes('application/json')) {
+                // Réponse JSON
+                data = await response.json();
+            } else {
+                // Réponse non-JSON (probablement texte brut ou HTML)
+                const text = await response.text();
+                console.warn('Réponse non-JSON reçue:', text);
+                data = { 
+                    success: false, 
+                    message: response.ok ? 'Réponse serveur invalide' : 'Nom d\'utilisateur ou mot de passe incorrect'
+                };
+            }
 
             if (response.ok && data.success) {
                 // Login successful (200 OK)
@@ -146,7 +162,7 @@ class AuthManager {
                     window.location.href = '/index.html';
                 }, 1000);
             } else {
-                // Login failed (e.g., 401 Unauthorized, même si la réponse est JSON)
+                // Login failed
                 const message = data.message || 'Nom d\'utilisateur ou mot de passe incorrect';
                 this.showAlert('error', message);
                 loginButton.disabled = false;
@@ -154,8 +170,7 @@ class AuthManager {
             }
         } catch (error) {
             console.error('Login error:', error);
-            // CORRECTION: Assurer que le bouton est réactivé en cas d'erreur réseau ou JSON.parse
-            this.showAlert('error', 'Erreur de connexion au serveur ou réponse inattendue. Veuillez réessayer.');
+            this.showAlert('error', 'Erreur de connexion au serveur. Veuillez réessayer.');
             loginButton.disabled = false;
             loginButton.innerHTML = 'Se connecter';
         }
