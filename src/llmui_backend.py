@@ -357,9 +357,73 @@ def require_auth(request: Request) -> Dict:
         )
     return user
 
+def init_database():
+    """Initialize database and create tables if they don't exist"""
+    try:
+        # Créer le répertoire parent si nécessaire
+        db_dir = os.path.dirname(DB_PATH)
+        if db_dir and not os.path.exists(db_dir):
+            os.makedirs(db_dir, exist_ok=True)
+            print(f"[DB] Created directory: {db_dir}")
+        
+        # Créer la base de données et les tables
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Table users
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                email TEXT,
+                is_admin INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                last_login TEXT
+            )
+        ''')
+        
+        # Vérifier si des utilisateurs existent
+        cursor.execute('SELECT COUNT(*) FROM users')
+        user_count = cursor.fetchone()[0]
+        
+        # Si aucun utilisateur, créer l'utilisateur par défaut
+        if user_count == 0:
+            print("[DB] No users found, creating default user...")
+            default_username = "francois"
+            default_password = "Francois2025!"
+            default_hash = hash_password_secure(default_password)
+            
+            cursor.execute('''
+                INSERT INTO users (username, password_hash, email, is_admin)
+                VALUES (?, ?, ?, ?)
+            ''', (default_username, default_hash, "francois@llmui.org", 1))
+            
+            print(f"[DB] Default user created: {default_username} / {default_password}")
+        
+        conn.commit()
+        conn.close()
+        
+        print(f"[DB] Database initialized at {DB_PATH}")
+        return True
+        
+    except Exception as e:
+        print(f"[ERROR] Database initialization failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
 # ============================================================================
 # 🔐 AUTHENTIFICATION - ENDPOINTS
 # ============================================================================
+
+# Initialize database on startup
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database and services on startup"""
+    print("[STARTUP] Initializing LLMUI Core Backend...")
+    init_database()
+    print("[STARTUP] Initialization complete!")
 
 @app.post("/api/auth/login", response_model=LoginResponse)
 async def login_user(credentials: LoginRequest, request: Request):
