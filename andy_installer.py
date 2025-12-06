@@ -1152,7 +1152,6 @@ Now analyze and provide fixes:"""
             "Permissions répertoire logs (775)",
             4
         )
-        )
         
         self.log(f"Utilisateur '{username}' créé avec succès", "SUCCESS")
         self.log("✅ Base de données initialisée avec schéma compatible llmui_backend.py", "SUCCESS")
