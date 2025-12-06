@@ -1101,10 +1101,11 @@ Now analyze and provide fixes:"""
         ''')
         
         # Table sessions - pour la gestion des sessions web
+        # CORRIGÉ v0.5.0: user_id INTEGER pour correspondre à users.id
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS sessions (
                 session_id TEXT PRIMARY KEY,
-                user_id TEXT NOT NULL,
+                user_id INTEGER NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 expires_at TIMESTAMP NOT NULL,
                 last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
