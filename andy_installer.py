@@ -1665,9 +1665,9 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
         
         # Timeouts
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
+        proxy_connect_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_read_timeout 3600s;
     }
 
     # WebSocket support for streaming
