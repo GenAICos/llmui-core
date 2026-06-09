@@ -1,7 +1,7 @@
 /**
  * LLMUI Authentication Script
  * Handles login functionality and session management
- * Version: v0.5.0
+ * Version: v1.0.0
  */
 
 class AuthManager {

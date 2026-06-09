@@ -1,4 +1,4 @@
-# Guide de dépannage - LLMUI Core v0.5.0
+# Guide de dépannage - LLMUI Core v1.0.0
 
 Guide complet pour résoudre les problèmes courants de LLMUI Core.
 

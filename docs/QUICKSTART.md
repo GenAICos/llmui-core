@@ -1,4 +1,4 @@
-# 🚀 Démarrage rapide - LLMUI Core v0.5.0
+# 🚀 Démarrage rapide - LLMUI Core v1.0.0
 
 Guide ultra-rapide pour installer et utiliser LLMUI Core en moins de 15 minutes.
 

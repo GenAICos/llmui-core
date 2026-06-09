@@ -7,13 +7,13 @@ Multi-model consensus generation system
 Author: François Chalut
 Website: https://llmui.org
 
-CORRECTIONS v0.5.0:
+CORRECTIONS v0.5.0 → v1.0.0:
 - 🔐 FIX CRITIQUE: Uniformisation du hashage avec andy_installer.py
 - Utilisation de bcrypt (ou PBKDF2 avec salt en fallback) au lieu de SHA256 simple
 - Ajout de hash_password_secure() et verify_password_secure()
 - Le mot de passe créé par andy_installer.py fonctionne maintenant correctement
 
-CORRECTIONS v0.5.0:
+CORRECTIONS v0.5.0 → v1.0.0:
 - FIX: JSONResponse 401 corrigé - status_code en paramètre direct
 - FIX: /api/models retourne maintenant des objets {name, size} au lieu de strings
 - FIX: /api/timeout-levels retourne success: true
@@ -448,7 +448,7 @@ async def login_user(credentials: LoginRequest, request: Request):
         if user:
             stored_hash = user[2]
             
-            # CORRECTION v0.5.0: Utiliser verify_password_secure au lieu de SHA256
+            # CORRECTION (v1.0.0): Utiliser verify_password_secure au lieu de SHA256
             if verify_password_secure(password, stored_hash):
                 # Create session
                 is_admin = bool(user[4])
@@ -652,7 +652,7 @@ class DatabaseManager:
         # # Insertion des utilisateurs par défaut si la table est vide
         # cursor.execute("SELECT COUNT(*) FROM users")
         # if cursor.fetchone()[0] == 0:
-        #     # CORRECTION v0.5.0: Utiliser hash_password_secure au lieu de SHA256
+        #     # CORRECTION (v1.0.0): Utiliser hash_password_secure au lieu de SHA256
         #     francois_hash = hash_password_secure("Francois2025!")
         #     demo_hash = hash_password_secure("demo123")
         #     
@@ -1045,7 +1045,7 @@ core = LLMUICore()
 @app.get("/health")
 async def health_check():
     """Health check endpoint (PUBLIC - no auth)"""
-    return {"status": "healthy", "version": "0.5.1"}
+    return {"status": "healthy", "version": "1.0.0"}
 
 @app.get("/api/models")
 async def get_models(request: Request, user: Dict = Depends(require_auth)):
@@ -1381,7 +1381,7 @@ if __name__ == "__main__":
     ✅ Memory management
     ✅ FIX: /api/models returns full objects
     ✅ FIX: JSONResponse 401 corrigé
-    🔐 FIX v0.5.0: Hashage bcrypt/PBKDF2 avec salt
+    🔐 FIX v0.5.0 (v1.0.0): Hashage bcrypt/PBKDF2 avec salt
     
     🌐 API Docs: http://localhost:5000/docs
     📊 Stats: http://localhost:5000/api/stats
