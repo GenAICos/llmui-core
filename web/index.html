@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="responsive-desktop.css">
     <link rel="stylesheet" href="responsive-mobile.css">
     <link rel="stylesheet" href="animations.css">
+    <link rel="stylesheet" href="andy.css">
     <!-- Session guard - Must be loaded first to protect the page -->
     <script src="session-guard.js"></script>
 </head>
@@ -53,7 +54,9 @@
         <header class="header">
             <div class="header-content">
                 <div class="logo">
-                    <div class="logo-icon">L</div>
+                    <div class="logo-icon">
+                        <img src="../images/Icon-Only-White.png" alt="LLMUI Core" class="logo-img">
+                    </div>
                     <div class="logo-text">LLMUI Core</div>
                 </div>
                 <div class="header-controls">
@@ -259,6 +262,71 @@
         </main>
     </div>
 
+    <!-- Andy Support Widget -->
+    <div class="andy-widget" id="andyWidget">
+        <button class="andy-toggle-btn" id="andyToggleBtn" title="Support Andy" aria-label="Ouvrir le support Andy">
+            <img src="../images/andyLogo.png" alt="Andy" class="andy-btn-avatar">
+            <span class="andy-badge" id="andyBadge"></span>
+        </button>
+
+        <div class="andy-chat-panel" id="andyChatPanel" role="dialog" aria-label="Support Andy">
+            <div class="andy-chat-header">
+                <div class="andy-header-left">
+                    <img src="../images/andyLogo.png" alt="Andy" class="andy-avatar">
+                    <div class="andy-header-info">
+                        <span class="andy-name">Andy</span>
+                        <span class="andy-status-text">
+                            <span class="andy-status-dot"></span>
+                            <span id="andyStatusText" data-i18n="andy_status_ready">Prêt à vous aider</span>
+                        </span>
+                    </div>
+                </div>
+                <div class="andy-header-right">
+                    <button class="andy-escalate-btn" id="andyEscalateBtn" title="Parler à un humain" aria-label="Escalader vers un humain">👤</button>
+                    <button class="andy-close-btn" id="andyCloseBtn" aria-label="Fermer Andy">×</button>
+                </div>
+            </div>
+
+            <div class="andy-messages" id="andyMessages" role="log" aria-live="polite">
+                <div class="andy-message andy-from-andy">
+                    <img src="../images/andyLogo.png" alt="Andy" class="andy-msg-avatar">
+                    <div class="andy-msg-bubble">
+                        <p data-i18n="andy_welcome">Bonjour ! Je suis Andy, votre assistant. Comment puis-je vous aider avec LLMUI Core ?</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="andy-thinking" id="andyThinking">
+                <span data-i18n="andy_thinking">Andy réfléchit</span>
+                <div class="andy-thinking-dots">
+                    <span></span><span></span><span></span>
+                </div>
+            </div>
+
+            <div class="andy-input-area">
+                <textarea
+                    class="andy-input"
+                    id="andyInput"
+                    data-i18n-placeholder="andy_input_placeholder"
+                    placeholder="Posez votre question..."
+                    rows="1"
+                    maxlength="2000"
+                ></textarea>
+                <button class="andy-send-btn" id="andySendBtn" aria-label="Envoyer">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="andy-footer">
+                <button class="andy-human-btn" id="andyHumanBtn">
+                    👤 <span data-i18n="andy_speak_human">Parler à un humain</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Main app scripts - Loads after session verification -->
     <script src="i18n.js"></script>
     <script src="utils.js"></script>
@@ -267,5 +335,6 @@
     <script src="ui.js"></script>
     <script src="main.js"></script>
     <script src="fallback.js"></script>
+    <script src="andy.js"></script>
 </body>
 </html>

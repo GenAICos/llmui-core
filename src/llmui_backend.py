@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #!/usr/bin/env python3
 """
-LLMUI Core Backend v0.5.0 - FastAPI Version
+LLMUI Core Backend v1.0.0 - FastAPI Version
 ==========================================
 Multi-model consensus generation system
 Author: François Chalut
@@ -126,7 +126,7 @@ def get_system_metadata(language: str = 'en') -> str:
     
     metadata = f"""[SYSTEM METADATA - HIDDEN FROM USER]
 Current Date/Time: {date_format}
-System: LLMUI Core v0.5.0 (Private Server)
+System: LLMUI Core v1.0.0 (Private Server)
 Backend: Ollama AI Framework
 Processing Mode: On-premise / Self-hosted
 [END SYSTEM METADATA]
@@ -182,7 +182,7 @@ def enrich_prompt(user_prompt: str, language: str = 'en') -> str:
 app = FastAPI(
     title="LLMUI Core API",
     description="Multi-model consensus generation system",
-    version="0.5.1",
+    version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc"
 )
@@ -1200,6 +1200,113 @@ async def delete_session(request: Request, session_id: str, user: Dict = Depends
         raise HTTPException(status_code=500, detail=str(e))
 
 # ============================================================================
+# 💬 ANDY SUPPORT — POST /api/support/chat
+# Copyright © Technologies Nexios TF Inc. — nexiostf.com
+# ============================================================================
+
+class SupportMessage(BaseModel):
+    """Single message in support conversation history."""
+    role: str = Field(..., description="'user' or 'assistant'")
+    content: str = Field(..., description="Message content")
+
+
+class SupportChatRequest(BaseModel):
+    """Request body for Andy support chat endpoint."""
+    message: str = Field(..., min_length=1, max_length=2000, description="User message")
+    session_id: Optional[str] = Field(None, description="Session identifier for history tracking")
+    history: List[SupportMessage] = Field(default_factory=list, description="Recent conversation history (max 10)")
+
+
+ANDY_SYSTEM_PROMPT = """Tu es Andy, l'assistant de support de LLMUI Core, développé par Technologies Nexios TF Inc.
+Tu aides les utilisateurs à comprendre et utiliser LLMUI Core, l'interface web multi-modèles pour Ollama.
+
+Règles absolues :
+- Réponds UNIQUEMENT dans la langue de l'utilisateur
+- Donne des étapes numérotées et précises — jamais de réponses vagues
+- Si tu ne sais pas → dis-le clairement et propose l'escalade humaine
+- Jamais de données sensibles (mots de passe, tokens, clés) dans les réponses
+- Tes réponses doivent être concises (max 3-4 paragraphes)
+
+À propos de LLMUI Core :
+- Interface web pour LLMs locaux via Ollama
+- Mode Simple : requête vers un seul modèle
+- Mode Consensus : plusieurs workers + un merger qui synthétise
+- Support de fichiers : txt, md, py, js, json, csv, docx, xlsx, pdf
+- 6 langues : français, anglais, espagnol, allemand, portugais, arabe
+- Authentification JWT avec sessions sécurisées"""
+
+
+@app.post("/api/support/chat")
+async def andy_support_chat(
+    request: Request,
+    body: SupportChatRequest,
+    user: Dict = Depends(require_auth)
+) -> Dict[str, Any]:
+    """
+    Endpoint Andy Support — répond aux questions des utilisateurs via Ollama local.
+
+    Args:
+        body: Message, session_id et historique de la conversation.
+        user: Utilisateur authentifié (injection via require_auth).
+
+    Returns:
+        JSON avec response, session_id et model utilisé.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+
+    andy_model = "qwen3.5:0.8b"
+    start_time = datetime.now()
+
+    # Construire le prompt avec l'historique
+    conversation_parts = [f"<|system|>\n{ANDY_SYSTEM_PROMPT}\n<|end|>"]
+    for msg in body.history[-8:]:
+        role_tag = "user" if msg.role == "user" else "assistant"
+        conversation_parts.append(f"<|{role_tag}|>\n{msg.content}\n<|end|>")
+    conversation_parts.append(f"<|user|>\n{body.message}\n<|end|>\n<|assistant|>")
+    full_prompt = "\n".join(conversation_parts)
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            res = await client.post(
+                f"{OLLAMA_API_BASE}/api/generate",
+                json={
+                    "model": andy_model,
+                    "prompt": full_prompt,
+                    "stream": False,
+                    "options": {"temperature": 0.5, "top_p": 0.9, "top_k": 40}
+                }
+            )
+            res.raise_for_status()
+            result = res.json()
+            reply = result.get("response", "").strip()
+
+    except httpx.ConnectError:
+        logger.warning("Andy: Ollama non disponible sur %s", OLLAMA_API_BASE)
+        reply = (
+            "Je ne suis pas disponible en ce moment (service Ollama inaccessible). "
+            "Veuillez réessayer dans quelques instants ou cliquer sur « Parler à un humain »."
+        )
+    except Exception as exc:
+        logger.error("Andy support error: %s", exc)
+        reply = (
+            "Une erreur technique s'est produite. "
+            "Veuillez réessayer ou contacter le support humain."
+        )
+
+    processing_time = (datetime.now() - start_time).total_seconds()
+    logger.info("Andy support — %.2fs — user: %s", processing_time, user.get("username", "?"))
+
+    return {
+        "success": True,
+        "response": reply,
+        "session_id": body.session_id,
+        "model": andy_model,
+        "processing_time": processing_time
+    }
+
+
+# ============================================================================
 # 🔍 NOUVEAU MIDDLEWARE - REQUEST LOGGING
 # ============================================================================
 
@@ -1236,7 +1343,7 @@ async def log_requests(request: Request, call_next):
 
 def run_service():
     """Run the backend service for systemd"""
-    print("🚀 Starting LLMUI Backend Service v0.5.0...")
+    print("🚀 Starting LLMUI Backend Service v1.0.0...")
     
     try:
         uvicorn.run(
