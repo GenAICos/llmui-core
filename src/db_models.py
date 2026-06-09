@@ -8,7 +8,7 @@ Ces modèles reflètent le schéma créé par
 
 import os
 from datetime import datetime
-from typing import AsyncGenerator, List, Optional
+from typing import AsyncGenerator, Optional
 
 from sqlalchemy import (
     Boolean,

@@ -15,7 +15,7 @@ from typing import Any, Callable, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.db_models import SystemConfig
+from db_models import SystemConfig
 
 logger = logging.getLogger("llmui.system_config")
 
