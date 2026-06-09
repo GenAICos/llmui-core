@@ -11,7 +11,6 @@ Version: 2.0.0
 
 import os
 import yaml
-from pathlib import Path
 from typing import Dict, Any, Optional
 from dataclasses import dataclass, field
 import logging
@@ -107,14 +106,17 @@ class SecurityConfig:
 
 @dataclass
 class DatabaseConfig:
-    """Database configuration"""
-    path: str = "/var/lib/llmui/llmui.db"
+    """Database configuration (PostgreSQL — F-04)"""
+    url: str = field(
+        default_factory=lambda: os.getenv(
+            "DATABASE_URL", "postgresql+asyncpg://llmui_user:CHANGEME@localhost:5432/llmui_core"
+        )
+    )
     backup_enabled: bool = True
     backup_interval_hours: int = 24
     backup_path: str = "/var/lib/llmui/backups"
     max_backups: int = 7
     timeout: int = 30
-    check_same_thread: bool = False
 
 @dataclass
 class LoggingConfig:
@@ -180,7 +182,7 @@ class ConsensusConfig:
 @dataclass
 class TempFilesConfig:
     """Temporary files configuration"""
-    directory: str = "/tmp/llmui_generated_files"
+    directory: str = "/var/lib/llmui/generated"
     cleanup_enabled: bool = True
     cleanup_interval_hours: int = 1
     max_age_hours: int = 24
@@ -331,10 +333,9 @@ class ConfigLoader:
             if not os.path.exists(self.config.ssl.key_file):
                 logging.error(f"❌ SSL key file not found: {self.config.ssl.key_file}")
         
-        # Check database path
-        db_dir = os.path.dirname(self.config.database.path)
-        if not os.path.exists(db_dir):
-            logging.warning(f"⚠️  Database directory not found: {db_dir}")
+        # Check database URL (PostgreSQL — F-04)
+        if "CHANGEME" in self.config.database.url:
+            logging.warning("⚠️  Mot de passe par défaut détecté dans DATABASE_URL ! À changer en production.")
         
         # Check log directory
         if not os.path.exists(self.config.logging.directory):
@@ -389,25 +390,25 @@ if __name__ == "__main__":
     print("LLMUI Core Configuration")
     print("="*60)
     
-    print(f"\n📡 Server:")
+    print("\n📡 Server:")
     print(f"   Backend: {config.server.backend.host}:{config.server.backend.port}")
     print(f"   Proxy: {config.server.proxy.host}:{config.server.proxy.port}")
     print(f"   SSL: {'Enabled' if config.server.proxy.enable_ssl else 'Disabled'}")
     
-    print(f"\n🔒 Security:")
+    print("\n🔒 Security:")
     print(f"   Auth: {'Enabled' if config.security.auth.enabled else 'Disabled'}")
     print(f"   Rate Limit: {'Enabled' if config.security.rate_limit.enabled else 'Disabled'}")
     print(f"   Max File Size: {config.security.file_upload.max_file_size_mb}MB")
     
-    print(f"\n💾 Database:")
-    print(f"   Path: {config.database.path}")
+    print("\n💾 Database:")
+    print(f"   URL: {config.database.url}")
     print(f"   Backup: {'Enabled' if config.database.backup_enabled else 'Disabled'}")
     
-    print(f"\n📊 Logging:")
+    print("\n📊 Logging:")
     print(f"   Level: {config.logging.level}")
     print(f"   Directory: {config.logging.directory}")
     
-    print(f"\n🤖 Ollama:")
+    print("\n🤖 Ollama:")
     print(f"   URLs: {', '.join(config.ollama.urls)}")
     print(f"   Default Workers: {', '.join(config.ollama.defaults.worker_models)}")
     print(f"   Default Merger: {config.ollama.defaults.merger_model}")
