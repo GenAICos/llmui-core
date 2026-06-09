@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS system_config (
 -- Table users
 CREATE TABLE IF NOT EXISTS users (
     id              SERIAL PRIMARY KEY,
-    email           VARCHAR(255) NOT NULL UNIQUE,
+    email           VARCHAR(255) NOT NULL,
     password_hash   TEXT NOT NULL,
     full_name       VARCHAR(200),
     lang            VARCHAR(10) DEFAULT 'fr',
@@ -80,10 +80,9 @@ CREATE TABLE IF NOT EXISTS users (
     is_admin        BOOLEAN DEFAULT FALSE,
     created_at      TIMESTAMPTZ DEFAULT NOW(),
     last_login_at   TIMESTAMPTZ,
-    CONSTRAINT idx_users_email UNIQUE (email)
+    CONSTRAINT uq_users_email UNIQUE (email)
 );
 
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_is_active ON users(is_active);
 
 -- Table user_totp (STANDARDS.md §6)
@@ -142,6 +141,36 @@ CREATE TABLE IF NOT EXISTS andy_knowledge (
 CREATE INDEX IF NOT EXISTS idx_andy_knowledge_category ON andy_knowledge(category);
 CREATE INDEX IF NOT EXISTS idx_andy_knowledge_lang     ON andy_knowledge(lang);
 
+-- Table conversations — historique des générations simple/consensus
+CREATE TABLE IF NOT EXISTS conversations (
+    id               SERIAL PRIMARY KEY,
+    session_id       VARCHAR(100) NOT NULL,
+    user_id          INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    prompt           TEXT NOT NULL,
+    response         TEXT NOT NULL,
+    model            VARCHAR(200),
+    worker_models    JSONB,
+    merger_model     VARCHAR(200),
+    processing_time  REAL,
+    mode             VARCHAR(20) NOT NULL DEFAULT 'simple',
+    created_at       TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_conversations_session ON conversations(session_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_user    ON conversations(user_id);
+
+-- Table messages — mémoire de contexte par session
+CREATE TABLE IF NOT EXISTS messages (
+    id          SERIAL PRIMARY KEY,
+    session_id  VARCHAR(100) NOT NULL,
+    user_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    role        VARCHAR(20) NOT NULL,
+    content     TEXT NOT NULL,
+    created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_messages_session_created ON messages(session_id, created_at);
+
 -- ============================================================================
 -- CONFIGURATION INITIALE (system_config)
 -- ============================================================================
@@ -155,7 +184,10 @@ INSERT INTO system_config (section, key, value, value_type, label, description) 
     ('andy',     'ollama_url',   'http://localhost:11434', 'string', 'URL Ollama', 'Instance Ollama locale'),
     ('security', 'totp_required_admin',  'true',  'bool',  'TOTP admin obligatoire', 'Exiger TOTP pour les admins'),
     ('security', 'max_login_attempts',   '5',     'int',   'Max tentatives login',   'Blocage après N échecs'),
-    ('security', 'lockout_minutes',      '15',    'int',   'Durée blocage (min)',     'Durée blocage après échecs')
+    ('security', 'lockout_minutes',      '15',    'int',   'Durée blocage (min)',     'Durée blocage après échecs'),
+    ('security', 'cors_allowed_origins', '[]',    'json',  'Origines CORS autorisées', 'Liste JSON des origines front-end autorisées (vide = même origine uniquement)'),
+    ('security', 'session_secret_key',   '',      'secret','Clé de session',     'Générée automatiquement au premier démarrage — ne pas éditer'),
+    ('security', 'totp_encryption_key',  '',      'secret','Clé de chiffrement TOTP', 'Générée automatiquement au premier démarrage — ne pas éditer')
 ON CONFLICT (section, key) DO NOTHING;
 
 \echo '✅ Base de données llmui_core créée avec succès — utilisateur : llmui_user'
