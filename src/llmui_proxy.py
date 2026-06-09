@@ -24,7 +24,7 @@ import os
 import sys
 import re
 import ssl
-from urllib.error import URLError, HTTPError
+from urllib.error import HTTPError
 import socket
 from datetime import datetime
 import uuid
@@ -41,20 +41,24 @@ import signal
 HTTP_PORT = 8000
 HTTPS_PORT = 8443
 
-# Backend configuration
-LLMUI_BACKEND_BASE = "http://localhost:5000"
+# Backend configuration — APP_PORT (.env, STANDARDS.md §2), backend lié à
+# 127.0.0.1 (C-06). Plus de port 5000 codé en dur.
+APP_PORT = os.getenv("APP_PORT", "8004")
+LLMUI_BACKEND_BASE = f"http://127.0.0.1:{APP_PORT}"
 OLLAMA_BASE = "http://localhost:11434"
 
 # SSL Configuration
 SSL_CERT = "/opt/llmui-core/ssl/llmui.crt"
 SSL_KEY = "/opt/llmui-core/ssl/llmui.key"
 
-# Directory for generated files
-GENERATED_FILES_DIR = "/tmp/llmui_generated_files"
-os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
+# Directory for generated files — hors /tmp, accès restreint (M-10)
+GENERATED_FILES_DIR = "/var/lib/llmui/generated"
+os.makedirs(GENERATED_FILES_DIR, mode=0o700, exist_ok=True)
+os.chmod(GENERATED_FILES_DIR, 0o700)
 
 # Timeouts (nettoyés - gardé seulement ceux utilisés)
-CONSENSUS_TIMEOUT = 86400
+# M-04 : plafonné à 4h (cohérent avec llmui_backend.py TIMEOUT_CONFIG)
+CONSENSUS_TIMEOUT = 14400
 HEALTH_TIMEOUT = 10
 MODELS_TIMEOUT = 10
 
@@ -140,9 +144,19 @@ class LLMUIProxyHandler(http.server.SimpleHTTPRequestHandler):
     def redirect_to_login(self):
         """Redirect to login page"""
         protocol = "https" if hasattr(self.server.socket, 'context') else "http"
-        port = HTTPS_PORT if protocol == "https" else HTTP_PORT
-        redirect_url = f"{protocol}://167.114.65.203:{port}/login.html"
-        
+
+        # M-09 : pas d'IP codée en dur — réutiliser l'hôte demandé par le
+        # client (en-tête Host), validé contre un format hôte[:port] simple,
+        # avec repli sur l'adresse d'écoute du serveur.
+        host_header = self.headers.get('Host', '')
+        if re.fullmatch(r"[A-Za-z0-9.\-]+(:\d{1,5})?", host_header):
+            host = host_header
+        else:
+            port = HTTPS_PORT if protocol == "https" else HTTP_PORT
+            host = f"{self.server.server_address[0] or '127.0.0.1'}:{port}"
+
+        redirect_url = f"{protocol}://{host}/login.html"
+
         self.send_response(302)
         self.send_header('Location', redirect_url)
         self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
@@ -353,16 +367,19 @@ class LLMUIProxyHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(response_data)
                 
         except HTTPError as e:
+            # H-06 : ne pas renvoyer str(e) au client (détails internes) —
+            # journalisé côté serveur uniquement.
+            print(f"[PROXY ERROR] Backend a répondu {e.code} pour {self.path}")
             self.send_response(e.code)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             error_response = json.dumps({
                 'success': False,
-                'error': str(e),
+                'error': "Erreur du serveur backend",
                 'code': e.code
             })
             self.wfile.write(error_response.encode('utf-8'))
-            
+
         except Exception as e:
             print(f"[PROXY ERROR] {e}")
             self.send_response(500)
@@ -370,7 +387,7 @@ class LLMUIProxyHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             error_response = json.dumps({
                 'success': False,
-                'error': str(e)
+                'error': "Erreur interne du serveur"
             })
             self.wfile.write(error_response.encode('utf-8'))
     
@@ -524,14 +541,14 @@ def start_server(port, use_https=False):
         
         if use_https:
             if not os.path.exists(SSL_CERT) or not os.path.exists(SSL_KEY):
-                print(f"❌ SSL certificates not found. HTTPS not started.")
+                print("❌ SSL certificates not found. HTTPS not started.")
                 return
             context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
             context.load_cert_chain(SSL_CERT, SSL_KEY)
             httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
-            print(f"✅ HTTPS server active on https://167.114.65.203:{port}")
+            print(f"✅ HTTPS server active on port {port} (all interfaces)")
         else:
-            print(f"✅ HTTP server active on http://167.114.65.203:{port}")
+            print(f"✅ HTTP server active on port {port} (all interfaces)")
         
         server_thread = threading.Thread(target=httpd.serve_forever, daemon=True)
         server_thread.start()
@@ -574,15 +591,15 @@ def main():
     if not os.path.exists(LLMUI_WEB_DIR):
         print(f"⚠️  WARNING: Web directory not found: {LLMUI_WEB_DIR}")
     else:
-        print(f"✅ Web directory found")
+        print("✅ Web directory found")
         web_files = os.listdir(LLMUI_WEB_DIR)
         print(f"   Files: {', '.join(web_files[:5])}")
         if len(web_files) > 5:
             print(f"   ... and {len(web_files) - 5} more")
     
     print()
-    print(f"Author: François Chalut")
-    print(f"Website: https://llmui.org")
+    print("Author: François Chalut")
+    print("Website: https://llmui.org")
     print("=" * 70)
     print()
     
