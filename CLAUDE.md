@@ -56,7 +56,7 @@ llmui-core/
 │   ├── Icon-Only-White.png ← Logo header (fond dégradé cyan/bleu)
 │   └── andyLogo.png        ← Avatar Andy
 ├── postInstallScripts/     ← Scripts post-installation OBLIGATOIRES
-├── installer/              ← Auto-installateur
+├── scripts/                ← Scripts d'installation système
 ├── tests/                  ← Tests pytest
 └── STANDARDS.md            ← Standards Nexios TF (autorité absolue)
 ```
