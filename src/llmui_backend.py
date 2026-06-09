@@ -1369,7 +1369,7 @@ if __name__ == "__main__":
         # Interactive mode - show banner and run
         print("""
     ┌─────────────────────────────────────────┐
-    │   LLMUI Core Backend v0.5.0 - FastAPI   │
+    │   LLMUI Core Backend v1.0.0 - FastAPI   │
     │   Author: François Chalut               │
     │   Website: https://llmui.org            │
     └─────────────────────────────────────────┘
