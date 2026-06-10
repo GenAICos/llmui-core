@@ -416,6 +416,16 @@ if command -v psql &>/dev/null; then
             [ -f "$candidate" ] && SQL_SCRIPT="$(realpath "$candidate")" && break
         done
 
+        # create_database.sql utilise LC_COLLATE/LC_CTYPE fr_CA.UTF-8 — absente
+        # par défaut sur une installation minimale (seules C/C.UTF-8 existent).
+        if ! locale -a 2>/dev/null | grep -qi '^fr_CA\.utf8$'; then
+            print_msg "info" "Génération de la locale fr_CA.UTF-8..."
+            echo "fr_CA.UTF-8 UTF-8" | sudo tee -a /etc/locale.gen >/dev/null
+            sudo locale-gen 2>>"$ERROR_LOG" \
+                && print_msg "success" "Locale fr_CA.UTF-8 générée" \
+                || print_msg "warning" "Échec génération locale fr_CA.UTF-8 — la création de llmui_core pourrait échouer"
+        fi
+
         if [ -n "$SQL_SCRIPT" ]; then
             # Récupère le mot de passe depuis .env pour créer le rôle llmui_user
             # avec le même mot de passe (évite tout désalignement .env / DB).
