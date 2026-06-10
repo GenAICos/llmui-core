@@ -576,13 +576,15 @@ et créer **tout** ce qui est nécessaire : utilisateur, base de données, permi
 -- Usage : psql -U postgres -f create_database.sql
 
 -- Création de l'utilisateur applicatif (idempotent)
-DO $$
+-- Tag $db_user$ (et non $$) : un mot de passe contenant '$' ne doit jamais
+-- pouvoir entrer en collision avec le délimiteur du bloc DO.
+DO $db_user$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'DB_USER') THEN
         CREATE ROLE DB_USER WITH LOGIN PASSWORD 'DB_PASSWORD';
     END IF;
 END
-$$;
+$db_user$;
 
 -- Création de la base de données (idempotent)
 SELECT 'CREATE DATABASE DB_NAME OWNER DB_USER ENCODING ''UTF8'''

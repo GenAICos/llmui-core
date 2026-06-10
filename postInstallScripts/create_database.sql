@@ -10,7 +10,10 @@
 -- ============================================================================
 -- CRÉATION DE L'UTILISATEUR APPLICATIF (idempotent)
 -- ============================================================================
-DO $$
+-- Tag $llmui_role$ (et non $$) : DB_PASSWORD est injecté par sed et peut
+-- contenir '$' — un délimiteur $$ entrerait alors en collision et casserait
+-- le bloc DO (ex. mot de passe '...##$$bdd' -> "syntax error at or near bdd").
+DO $llmui_role$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'llmui_user') THEN
         CREATE ROLE llmui_user WITH LOGIN PASSWORD 'DB_PASSWORD';
@@ -19,7 +22,7 @@ BEGIN
         RAISE NOTICE 'Utilisateur llmui_user existe déjà — ignoré.';
     END IF;
 END
-$$;
+$llmui_role$;
 
 -- ============================================================================
 -- CRÉATION DE LA BASE DE DONNÉES (idempotent)
