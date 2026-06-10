@@ -196,10 +196,27 @@ if command -v ollama &>/dev/null; then
     print_msg "success" "Ollama disponible"
 else
     print_msg "warning" "Ollama absent — installation via script officiel..."
-    if command -v curl &>/dev/null && curl -fsSL https://ollama.com/install.sh | sh 2>>"$ERROR_LOG"; then
-        print_msg "success" "Ollama installé"
+    if command -v curl &>/dev/null; then
+        # ✅ CORRECTION M-07 : on télécharge le script dans un fichier (pas de
+        # `curl | sh`), on vérifie qu'il a bien été reçu en entier et qu'il
+        # ressemble à un script shell, et on affiche son SHA-256 pour
+        # permettre une vérification manuelle avant exécution.
+        OLLAMA_INSTALL_SCRIPT="$(mktemp)"
+        if curl -fsSL https://ollama.com/install.sh -o "$OLLAMA_INSTALL_SCRIPT" 2>>"$ERROR_LOG" \
+            && [ -s "$OLLAMA_INSTALL_SCRIPT" ] \
+            && head -n1 "$OLLAMA_INSTALL_SCRIPT" | grep -q '^#!'; then
+            print_msg "info" "SHA-256 du script Ollama : $(sha256sum "$OLLAMA_INSTALL_SCRIPT" | cut -d' ' -f1)"
+            if sh "$OLLAMA_INSTALL_SCRIPT" 2>>"$ERROR_LOG"; then
+                print_msg "success" "Ollama installé"
+            else
+                print_msg "warning" "Échec installation Ollama — installez manuellement : https://ollama.com/download"
+            fi
+        else
+            print_msg "warning" "Téléchargement du script Ollama invalide — installez manuellement : https://ollama.com/download"
+        fi
+        rm -f "$OLLAMA_INSTALL_SCRIPT"
     else
-        print_msg "warning" "Échec installation Ollama — installez manuellement : https://ollama.com/download"
+        print_msg "warning" "curl indisponible — installez Ollama manuellement : https://ollama.com/download"
     fi
 fi
 
