@@ -40,7 +40,6 @@ class LLMUIApp {
     }
     
     async init() {
-        console.log('Initialisation de LLMUIApp...');
         this.i18n.updateUI();
         this.setupEventListeners();
         await this.loadModels();
@@ -62,20 +61,12 @@ class LLMUIApp {
             const promptInput = document.getElementById('promptInput');
             if (promptInput) {
                 promptInput.focus();
-                console.log('✅ Focus mis sur le prompt');
             }
         }, 100);
     }
     
     async sendMessage(prompt, isEdited = false) {
-        console.log('sendMessage appelé:', {
-            prompt: prompt ? prompt.substring(0, 50) + '...' : 'null',
-            isEdited: isEdited,
-            currentMode: this.currentMode
-        });
-        
         if (!prompt || prompt.trim() === '') {
-            console.log('Message vide, abandon');
             return;
         }
         
@@ -122,14 +113,12 @@ class LLMUIApp {
         
         // Ajouter le contenu des fichiers au prompt
         if (this.selectedFiles && this.selectedFiles.length > 0) {
-            console.log('Lecture des fichiers joints:', this.selectedFiles.length);
             const filesContent = [];
             
             for (const file of this.selectedFiles) {
                 try {
                     const content = await readFileContent(file);
                     filesContent.push(`=== Fichier: ${file.name} ===\n${content}\n=== Fin du fichier ===`);
-                    console.log(`Fichier lu: ${file.name} (${content.length} caractères)`);
                 } catch (error) {
                     console.error('Erreur lecture fichier:', error);
                     filesContent.push(`=== Fichier: ${file.name} ===\n[ERREUR: Impossible de lire le fichier]\n=== Fin du fichier ===`);
@@ -137,12 +126,9 @@ class LLMUIApp {
             }
             
             fullPrompt = `Fichiers joints (${this.selectedFiles.length}):\n${filesContent.join('\n\n')}\n\nQuestion: ${prompt}`;
-            console.log('Prompt avec fichiers:', fullPrompt.substring(0, 200) + '...');
         }
         
         try {
-            console.log('Envoi requête simple à l API (timeout backend: ' + this.currentTimeoutLevel + ') avec fichiers:', this.selectedFiles?.length || 0);
-            
             const response = await fetch('/api/simple-generate', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -155,17 +141,13 @@ class LLMUIApp {
                 })
             });
             
-            console.log('Réponse API reçue:', response.status);
-            
             if (!response.ok) {
                 throw new Error('HTTP ' + response.status + ': ' + response.statusText);
             }
             
             const data = await response.json();
-            console.log('Données API reçues:', data);
             
             if (data.success) {
-                console.log('✅ Réponse LLM reçue avec succès');
                 this.updateMessage(messageDiv, data.response, data.model || model);
                 showNotification('Réponse reçue du LLM', 'success');
             } else {
@@ -215,7 +197,6 @@ class LLMUIApp {
         } finally {
             this.isProcessing = false;
             this.updateUI();
-            console.log('sendSimple terminé');
         }
     }
     
@@ -243,14 +224,12 @@ class LLMUIApp {
         
         // Ajouter le contenu des fichiers au prompt
         if (this.selectedFiles && this.selectedFiles.length > 0) {
-            console.log('Lecture des fichiers joints:', this.selectedFiles.length);
             const filesContent = [];
             
             for (const file of this.selectedFiles) {
                 try {
                     const content = await readFileContent(file);
                     filesContent.push(`=== Fichier: ${file.name} ===\n${content}\n=== Fin du fichier ===`);
-                    console.log(`Fichier lu: ${file.name} (${content.length} caractères)`);
                 } catch (error) {
                     console.error('Erreur lecture fichier:', error);
                     filesContent.push(`=== Fichier: ${file.name} ===\n[ERREUR: Impossible de lire le fichier]\n=== Fin du fichier ===`);
@@ -258,7 +237,6 @@ class LLMUIApp {
             }
             
             fullPrompt = `Fichiers joints (${this.selectedFiles.length}):\n${filesContent.join('\n\n')}\n\nQuestion: ${prompt}`;
-            console.log('Prompt avec fichiers:', fullPrompt.substring(0, 200) + '...');
         }
         
         try {
@@ -301,29 +279,22 @@ class LLMUIApp {
     
     // Méthodes de base (implémentées dans ui.js)
     setupEventListeners() {
-        console.log('setupEventListeners - méthode de base');
     }
     
     updateUI() {
-        console.log('updateUI - méthode de base');
     }
     
     addMessage(type, content, files) {
-        console.log('addMessage - méthode de base');
         return document.createElement('div');
     }
     
     updateMessage(messageDiv, content, model) {
-        console.log('updateMessage - méthode de base');
     }
     
     updateConsensusMessage(messageDiv, data) {
-        console.log('updateConsensusMessage - méthode de base');
     }
     
     populateModelSelects() {
-        console.log('populateModelSelects - remplissage des sélecteurs de modèles');
-        
         if (!this.availableModels || this.availableModels.length === 0) {
             console.warn('Aucun modèle disponible');
             return;
@@ -344,7 +315,6 @@ class LLMUIApp {
             if (this.availableModels.length > 0) {
                 simpleSelect.value = this.availableModels[0];
             }
-            console.log(`✅ ${this.availableModels.length} modèles ajoutés au select simple`);
         }
         
         // 2. Remplir le select merger
@@ -362,7 +332,6 @@ class LLMUIApp {
             if (this.availableModels.length > 0) {
                 mergerSelect.value = this.availableModels[0];
             }
-            console.log(`✅ ${this.availableModels.length} modèles ajoutés au select merger`);
         }
         
         // 3. Créer les checkboxes pour les workers
@@ -391,29 +360,23 @@ class LLMUIApp {
                 checkboxContainer.appendChild(labelText);
                 workerGrid.appendChild(checkboxContainer);
             });
-            
-            console.log(`✅ ${this.availableModels.length} modèles ajoutés aux workers`);
         }
     }
     
     clearInput() {
-        console.log('clearInput - méthode de base');
     }
     
     clearFiles() {
-        console.log('clearFiles - méthode de base');
     }
     
     getSelectedWorkers() {
         const checkboxes = document.querySelectorAll('input[name="worker-model"]:checked');
         const selectedWorkers = Array.from(checkboxes).map(cb => cb.value);
-        console.log('Workers sélectionnés:', selectedWorkers);
         return selectedWorkers;
     }
     
     async loadModels() {
         try {
-            console.log('Chargement des modèles...');
             const response = await fetch('/api/models');
             
             if (!response.ok) {
@@ -440,9 +403,6 @@ class LLMUIApp {
                         // Tri alphabétique insensible à la casse
                         return a.toLowerCase().localeCompare(b.toLowerCase());
                     });
-                
-                console.log('✅ Modèles chargés:', this.availableModels.length, 'modèles');
-                console.log('Premiers modèles:', this.availableModels.slice(0, 5));
                 
                 this.populateModelSelects();
                 showNotification(this.i18n.t('models_loaded'), 'success');
@@ -474,7 +434,6 @@ class LLMUIApp {
             if (data.success && data.levels) {
                 // Fusionner avec les valeurs par défaut (au cas où)
                 this.timeoutLevels = { ...this.timeoutLevels, ...data.levels };
-                console.log('✅ Timeout levels chargés depuis l\'API');
             }
             
             this.updateTimeoutInfo();
@@ -487,11 +446,8 @@ class LLMUIApp {
     
     async loadStats() {
         try {
-            console.log('Chargement des statistiques...');
-            
             const controller = new AbortController();
             const timeoutId = setTimeout(function() {
-                console.log('Timeout stats après 3 secondes');
                 controller.abort();
             }, 3000);
 
@@ -510,7 +466,6 @@ class LLMUIApp {
             if (data.success && data.stats) {
                 this.updateStatsDisplay(data.stats);
                 this.statsFailCount = 0;
-                console.log('✅ Stats chargées avec succès');
             } else {
                 throw new Error('Données de stats invalides');
             }
@@ -541,7 +496,6 @@ class LLMUIApp {
         if (this.statsRefreshInterval) {
             clearInterval(this.statsRefreshInterval);
             this.statsRefreshInterval = null;
-            console.log('Rafraîchissement stats arrêté');
         }
     }
     
@@ -576,7 +530,6 @@ class LLMUIApp {
     
     startStatsRefresh() {
         if (!this.statsRefreshInterval && this.statsFailCount < this.maxStatsRetries) {
-            console.log('Démarrage rafraîchissement stats (30s)');
             this.statsRefreshInterval = setInterval(() => {
                 if (this.statsFailCount < this.maxStatsRetries) {
                     this.loadStats();
@@ -614,12 +567,10 @@ class LLMUIApp {
     
     // Méthodes simplifiées
     async sendSimpleMessage(content, files) {
-        console.log('Envoi message simple:', content.substring(0, 50) + '...');
         return await this.sendSimple(content);
     }
     
     async sendConsensusMessage(content, files) {
-        console.log('Envoi message consensus:', content.substring(0, 50) + '...');
         return await this.sendConsensus(content);
     }
 }

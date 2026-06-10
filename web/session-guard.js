@@ -51,27 +51,8 @@
             const logoutBtn = document.createElement('button');
             logoutBtn.id = 'logoutBtn';
             logoutBtn.className = 'logout-btn';
-            logoutBtn.innerHTML = '🚪 Déconnexion';
+            logoutBtn.textContent = '🚪 Déconnexion';
             logoutBtn.title = 'Se déconnecter';
-            logoutBtn.style.cssText = `
-                padding: 0.5rem 1rem;
-                background: rgba(239, 68, 68, 0.1);
-                border: 1px solid rgba(239, 68, 68, 0.3);
-                border-radius: 0.5rem;
-                color: #f50000;
-                cursor: pointer;
-                font-size: 0.9rem;
-                transition: all 0.3s;
-                margin-left: 1rem;
-            `;
-
-            logoutBtn.addEventListener('mouseenter', () => {
-                logoutBtn.style.background = 'rgba(239, 68, 68, 0.2)';
-            });
-
-            logoutBtn.addEventListener('mouseleave', () => {
-                logoutBtn.style.background = 'rgba(239, 68, 68, 0.1)';
-            });
 
             logoutBtn.addEventListener('click', handleLogout);
             
@@ -88,7 +69,8 @@
     function displayUserInfo(user) {
         const statusText = document.getElementById('statusText');
         if (statusText && user) {
-            statusText.innerHTML = `👤 ${user.username} • Système Actif`;
+            // C-03 : textContent pour éviter l'injection HTML via user.username
+            statusText.textContent = `👤 ${user.username} • Système Actif`;
         }
     }
 
@@ -137,7 +119,6 @@
         const isAuthenticated = await checkAuthentication();
         if (isAuthenticated) {
             startSessionRefresh();
-            console.log('✅ Session authenticated');
         }
     });
 

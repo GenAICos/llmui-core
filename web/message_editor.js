@@ -218,17 +218,8 @@ function showNotification(message, type = 'info') {
     notification.textContent = message;
     
     // Styles pour la notification
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 1rem 1.5rem;
-        border-radius: 8px;
-        z-index: 10000;
-        animation: slideIn 0.3s ease;
-        max-width: 400px;
-    `;
-    
+    notification.classList.add('toast-fixed');
+
     // Couleurs selon le type
     const colors = {
         info: '#aeb910',

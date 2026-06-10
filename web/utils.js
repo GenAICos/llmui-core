@@ -50,15 +50,7 @@ function showNotification(message, type = 'info') {
     if (!container) {
         container = document.createElement('div');
         container.id = 'notificationContainer';
-        container.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 10000;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        `;
+        container.className = 'toast-container';
         document.body.appendChild(container);
     }
     
@@ -74,18 +66,8 @@ function showNotification(message, type = 'info') {
         error: '#ef4444'
     };
     
-    notification.style.cssText = `
-        padding: 1rem 1.5rem;
-        background: ${colors[type] || colors.info};
-        color: white;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        font-size: 0.9rem;
-        max-width: 350px;
-        transition: all 0.3s ease;
-        opacity: 0;
-        transform: translateX(100px);
-    `;
+    notification.classList.add('toast');
+    notification.style.background = colors[type] || colors.info;
     
     container.appendChild(notification);
     

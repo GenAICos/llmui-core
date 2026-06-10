@@ -28,6 +28,85 @@ body {
     display: none !important;
 }
 
+/* ✅ CORRECTION M-06 : classes CSS pour remplacer les styles inline (CSP style-src) */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.toast {
+    padding: 1rem 1.5rem;
+    color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    font-size: 0.9rem;
+    max-width: 350px;
+    transition: all 0.3s ease;
+    opacity: 0;
+    transform: translateX(100px);
+}
+
+.toast-fixed {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    z-index: 10000;
+    animation: slideIn 0.3s ease;
+    max-width: 400px;
+    color: white;
+}
+
+.logout-btn {
+    padding: 0.5rem 1rem;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 0.5rem;
+    color: #f50000;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s;
+    margin-left: 1rem;
+}
+
+.logout-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+}
+
+.info-hint {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: rgba(6, 182, 212, 0.1);
+    border-left: 3px solid #06b6d4;
+    border-radius: 8px;
+    font-size: 0.8rem;
+}
+
+.offline-warning {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: #f59e0b;
+    color: white;
+    padding: 0.5rem;
+    text-align: center;
+    font-weight: bold;
+    z-index: 10000;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from { transform: translateY(-100%); }
+    to { transform: translateY(0); }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
     width: 8px;

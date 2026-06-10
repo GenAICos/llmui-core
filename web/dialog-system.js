@@ -46,19 +46,10 @@ function showDialog(options) {
         confirm: '&#10067;'   // ❓
     };
     
-    // Couleurs selon le type
-    const colors = {
-        info: '#3b82f6',
-        success: '#10b981',
-        warning: '#f59e0b',
-        error: '#ef4444',
-        confirm: '#8b5cf6'
-    };
-
     // Construction du HTML
     dialog.innerHTML = `
-        <div class="dialog-header" style="border-bottom: 2px solid ${colors[type]}">
-            <div class="dialog-icon" style="background: ${colors[type]}">${icons[type]}</div>
+        <div class="dialog-header">
+            <div class="dialog-icon">${icons[type]}</div>
             <h3 class="dialog-title">${title}</h3>
         </div>
         <div class="dialog-body">
@@ -211,7 +202,6 @@ async function confirmFileRemoval(filename) {
     
     if (confirmed) {
         // Supprimer le fichier
-        console.log('Fichier supprimé');
     }
 }
 
@@ -237,174 +227,3 @@ async function confirmClearConversation() {
     return confirmed;
 }
 
-// ============================================
-// STYLES CSS À AJOUTER
-// ============================================
-
-/**
- * Injecte automatiquement les styles nécessaires
- */
-function injectDialogStyles() {
-    const style = document.createElement('style');
-    style.textContent = `
-        /* Dialog Overlay */
-        .dialog-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(4px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10000;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        /* Dialog Container */
-        .custom-dialog {
-            background: var(--color-surface, #1f2937);
-            border-radius: 12px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-            max-width: 500px;
-            width: 90%;
-            overflow: hidden;
-            transform: scale(0.9);
-            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        /* Dialog Header */
-        .dialog-header {
-            padding: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .dialog-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            color: white;
-            flex-shrink: 0;
-        }
-
-        .dialog-title {
-            margin: 0;
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--color-text, #f3f4f6);
-        }
-
-        /* Dialog Body */
-        .dialog-body {
-            padding: 1.5rem;
-            padding-top: 0;
-        }
-
-        .dialog-message {
-            margin: 0;
-            font-size: 1rem;
-            line-height: 1.6;
-            color: var(--color-text-secondary, #9ca3af);
-        }
-
-        /* Dialog Footer */
-        .dialog-footer {
-            padding: 1.5rem;
-            padding-top: 1rem;
-            display: flex;
-            gap: 0.75rem;
-            justify-content: flex-end;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        /* Dialog Buttons */
-        .dialog-btn {
-            padding: 0.625rem 1.5rem;
-            border: none;
-            border-radius: 8px;
-            font-size: 0.95rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .dialog-btn-ok,
-        .dialog-btn-confirm {
-            background: var(--color-primary, #3b82f6);
-            color: white;
-        }
-
-        .dialog-btn-ok:hover,
-        .dialog-btn-confirm:hover {
-            background: var(--color-primary-hover, #2563eb);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-        }
-
-        .dialog-btn-cancel {
-            background: var(--color-secondary, rgba(255, 255, 255, 0.1));
-            color: var(--color-text, #f3f4f6);
-        }
-
-        .dialog-btn-cancel:hover {
-            background: rgba(255, 255, 255, 0.15);
-        }
-
-        /* Type-specific dialog styles */
-        .dialog-error .dialog-header {
-            background: rgba(239, 68, 68, 0.1);
-        }
-
-        .dialog-success .dialog-header {
-            background: rgba(16, 185, 129, 0.1);
-        }
-
-        .dialog-warning .dialog-header {
-            background: rgba(245, 158, 11, 0.1);
-        }
-
-        .dialog-info .dialog-header {
-            background: rgba(59, 130, 246, 0.1);
-        }
-
-        .dialog-confirm .dialog-header {
-            background: rgba(139, 92, 246, 0.1);
-        }
-
-        /* Dark mode adjustments */
-        @media (prefers-color-scheme: light) {
-            .custom-dialog {
-                background: white;
-            }
-            
-            .dialog-title {
-                color: #1f2937;
-            }
-            
-            .dialog-message {
-                color: #4b5563;
-            }
-            
-            .dialog-footer {
-                border-top: 1px solid rgba(0, 0, 0, 0.1);
-            }
-        }
-    `;
-    document.head.appendChild(style);
-}
-
-// Injection automatique au chargement
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', injectDialogStyles);
-} else {
-    injectDialogStyles();
-}

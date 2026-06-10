@@ -10,8 +10,6 @@ function fix1366x768Layout() {
     
     // Détection spécifique 1366x768
     if (width === 1366 && height === 768) {
-        console.log('Détection écran 1366x768 - Application des correctifs');
-        
         // Force le recalcul des hauteurs
         const mainContent = document.getElementById('mainContent');
         const messagesContainer = document.getElementById('messagesContainer');

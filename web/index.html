@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="responsive-mobile.css">
     <link rel="stylesheet" href="animations.css">
     <link rel="stylesheet" href="andy.css">
+    <link rel="stylesheet" href="dialog-system.css">
     <!-- Session guard - Must be loaded first to protect the page -->
     <script src="session-guard.js"></script>
 </head>
@@ -114,7 +115,7 @@
                         <span id="statusMessage" data-i18n="system_ready">Système prêt</span>
                     </div>
                     <div class="status-bar-right">
-                        <a href="index.html" target="_blank" styles="rel="noopener noreferrer" 
+                        <a href="index.html" target="_blank" rel="noopener noreferrer"
                            class="status-bar-btn info-btn" title="Nouvelle conversation">
                             <span data-i18n="nouvelleConversation">Nouvelle conversation</span>
                         </a>
@@ -194,7 +195,7 @@
                         <option value="low" data-i18n="timeout_low">⚡ Bas (15 min)</option>
                         <option value="medium" selected data-i18n="timeout_medium">⏱️ Moyen (1h)</option>
                         <option value="high" data-i18n="timeout_high">⏰ Haut (4h)</option>
-                        <option value="very_high" data-i18n="timeout_very_high">🕐 Très Haut (12h)</option>
+                        <option value="very_high" data-i18n="timeout_very_high">🕐 Très Haut (4h)</option>
                     </select>
                     <div id="timeoutInfo" class="timeout-info"></div>
                 </div>
@@ -211,19 +212,19 @@
                 </div>
 
                 <!-- Workers -->
-                <div class="config-card fade-in" id="workerModelsCard" style="display: none;">
+                <div class="config-card fade-in hidden" id="workerModelsCard">
                     <h3 class="card-title">
                         <span class="card-icon">🤖</span>
                         <span>Modèles Workers</span>
                     </h3>
                     <div class="model-grid" id="workerModels"></div>
-                    <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(6, 182, 212, 0.1); border-left: 3px solid #06b6d4; border-radius: 8px; font-size: 0.8rem;">
+                    <div class="info-hint">
                         💡 Sélectionnez 2-5 modèles pour le consensus
                     </div>
                 </div>
 
                 <!-- Merger -->
-                <div class="config-card fade-in" id="mergerCard" style="display: none;">
+                <div class="config-card fade-in hidden" id="mergerCard">
                     <h3 class="card-title">
                         <span class="card-icon">🧠</span>
                         <span>Modèle Merger</span>

@@ -270,13 +270,13 @@ LLMUIApp.prototype.switchMode = function(mode) {
     const mergerCard = document.getElementById('mergerCard');
     
     if (simpleModelCard) {
-        simpleModelCard.style.display = mode === 'simple' ? 'block' : 'none';
+        simpleModelCard.classList.toggle('hidden', mode !== 'simple');
     }
     if (workerModelsCard) {
-        workerModelsCard.style.display = mode === 'consensus' ? 'block' : 'none';
+        workerModelsCard.classList.toggle('hidden', mode !== 'consensus');
     }
     if (mergerCard) {
-        mergerCard.style.display = mode === 'consensus' ? 'block' : 'none';
+        mergerCard.classList.toggle('hidden', mode !== 'consensus');
     }
     
     this.updateTimeoutInfo();
@@ -562,12 +562,26 @@ LLMUIApp.prototype.updateConsensusMessage = function(messageDiv, data) {
     }
 };
 
+// ✅ CORRECTION C-03 : échappe les entités HTML pour empêcher l'injection de
+// balises (XSS) via une réponse LLM avant toute transformation markdown.
+function escapeHtml(text) {
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // ✅ CORRECTION v2.0.1: Liens de téléchargement markdown → HTML
 LLMUIApp.prototype.formatContent = function(content) {
     if (!content) return '';
-    
+
+    // C-03 : échapper le HTML AVANT toute transformation markdown
+    let formatted = escapeHtml(content);
+
     // Remplacer les retours à ligne par des <br>
-    let formatted = content.replace(/\n/g, '<br>');
+    formatted = formatted.replace(/\n/g, '<br>');
     
     // ✅ CORRECTION: Convertir les liens markdown de téléchargement en HTML cliquables
     formatted = formatted.replace(
@@ -633,9 +647,7 @@ LLMUIApp.prototype.updateUI = function() {
 
 LLMUIApp.prototype.handleFileSelect = function(files) {
     if (!files || files.length === 0) return;
-    
-    console.log('Fichiers sélectionnés:', files);
-    
+
     // Extensions autorisées
     const allowedExtensions = [
         '.txt', '.md', '.markdown', '.rst',
