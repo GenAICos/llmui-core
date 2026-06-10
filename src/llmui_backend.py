@@ -1231,8 +1231,8 @@ async def log_requests(request: Request, call_next):
 
 def run_service():
     """Démarre le service backend pour systemd."""
-    logger.info("Démarrage du service LLMUI Backend sur 127.0.0.1:%s...", APP_PORT)
-    uvicorn.run(app, host="127.0.0.1", port=APP_PORT, log_level="info", access_log=True)
+    logger.info("Démarrage du service LLMUI Backend sur 0.0.0.0:%s...", APP_PORT)
+    uvicorn.run(app, host="0.0.0.0", port=APP_PORT, log_level="info", access_log=True)
 
 
 if __name__ == "__main__":
@@ -1252,4 +1252,4 @@ if __name__ == "__main__":
     📊 Stats    : http://127.0.0.1:{APP_PORT}/api/stats (authentifié)
     ❤️  Health   : http://127.0.0.1:{APP_PORT}/health
     """)
-        uvicorn.run(app, host="127.0.0.1", port=APP_PORT, log_level="info")
+        uvicorn.run(app, host="0.0.0.0", port=APP_PORT, log_level="info")
