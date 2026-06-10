@@ -33,6 +33,10 @@ import time
 import atexit
 import signal
 
+# Sortie non bufferisée — visible immédiatement dans journalctl (systemd)
+sys.stdout.reconfigure(line_buffering=True)
+sys.stderr.reconfigure(line_buffering=True)
+
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
@@ -541,8 +545,8 @@ def start_server(port, use_https=False):
         
         if use_https:
             if not os.path.exists(SSL_CERT) or not os.path.exists(SSL_KEY):
-                print("❌ SSL certificates not found. HTTPS not started.")
-                return
+                print("❌ SSL certificates not found. HTTPS not started.", file=sys.stderr)
+                sys.exit(1)
             context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
             context.load_cert_chain(SSL_CERT, SSL_KEY)
             httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
@@ -565,7 +569,8 @@ def start_server(port, use_https=False):
         server_thread.join()
         
     except Exception as e:
-        print(f"❌ Server failed: {e}")
+        print(f"❌ Server failed: {e}", file=sys.stderr)
+        sys.exit(1)
 
 def main():
     """Main entry point"""

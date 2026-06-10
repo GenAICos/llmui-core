@@ -485,6 +485,7 @@ Type=simple
 User=$SERVICE_USER
 WorkingDirectory=$PROJECT_DIR
 EnvironmentFile=$ENV_FILE
+Environment=PYTHONUNBUFFERED=1
 ExecStart=$VENV_DIR/bin/python $BACKEND_SCRIPT
 Restart=always
 RestartSec=5
@@ -525,6 +526,7 @@ Type=simple
 User=$SERVICE_USER
 WorkingDirectory=$PROJECT_DIR
 EnvironmentFile=$ENV_FILE
+Environment=PYTHONUNBUFFERED=1
 ExecStart=$VENV_DIR/bin/python $PROXY_SCRIPT
 Restart=always
 RestartSec=5
