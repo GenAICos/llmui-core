@@ -95,7 +95,7 @@ wait_for_continue
 # ============================================================================
 # ÉTAPE 1 — PRÉREQUIS SYSTÈME
 # ============================================================================
-print_msg "step" "Étape 1/7 : Vérification et installation des prérequis système"
+print_msg "step" "Étape 1/8 : Vérification et installation des prérequis système"
 echo ""
 
 # Détecter le gestionnaire de paquets
@@ -241,7 +241,7 @@ wait_for_continue
 # ============================================================================
 # ÉTAPE 2 — STRUCTURE DE FICHIERS
 # ============================================================================
-print_msg "step" "Étape 2/7 : Création de la structure de fichiers"
+print_msg "step" "Étape 2/8 : Création de la structure de fichiers"
 echo ""
 
 if sudo mkdir -p "$INSTALL_DIR"/{src,web,ssl,scripts,docs,tests,images,tools,postInstallScripts} 2>>"$ERROR_LOG"; then
@@ -261,7 +261,7 @@ wait_for_continue
 # ============================================================================
 # ÉTAPE 3 — ENVIRONNEMENT VIRTUEL PYTHON
 # ============================================================================
-print_msg "step" "Étape 3/7 : Environnement virtuel Python"
+print_msg "step" "Étape 3/8 : Environnement virtuel Python"
 echo ""
 
 if [ -d "$VENV_DIR" ]; then
@@ -290,7 +290,7 @@ wait_for_continue
 # ============================================================================
 # ÉTAPE 4 — DÉPENDANCES PYTHON
 # ============================================================================
-print_msg "step" "Étape 4/7 : Installation des packages Python"
+print_msg "step" "Étape 4/8 : Installation des packages Python"
 echo ""
 
 # Chercher requirements.txt (priorité : répertoire courant, puis INSTALL_DIR)
@@ -348,7 +348,7 @@ wait_for_continue
 # ============================================================================
 # ÉTAPE 5 — CONFIGURATION .env
 # ============================================================================
-print_msg "step" "Étape 5/7 : Configuration de l'environnement (.env)"
+print_msg "step" "Étape 5/8 : Configuration de l'environnement (.env)"
 echo ""
 
 ENV_FILE="$INSTALL_DIR/.env"
@@ -397,7 +397,7 @@ wait_for_continue
 # ============================================================================
 # ÉTAPE 6 — BASE DE DONNÉES POSTGRESQL
 # ============================================================================
-print_msg "step" "Étape 6/7 : Base de données PostgreSQL"
+print_msg "step" "Étape 6/8 : Base de données PostgreSQL"
 echo ""
 
 if command -v psql &>/dev/null; then
@@ -458,9 +458,9 @@ fi
 wait_for_continue
 
 # ============================================================================
-# ÉTAPE 7 — DÉMARRAGE DU BACKEND
+# ÉTAPE 7 — SERVICE SYSTEMD
 # ============================================================================
-print_msg "step" "Étape 7/7 : Démarrage du backend"
+print_msg "step" "Étape 7/8 : Création du service systemd"
 echo ""
 
 BACKEND_SCRIPT=""
@@ -468,29 +468,84 @@ for candidate in "$SCRIPT_DIR/../src/llmui_backend.py" "$INSTALL_DIR/src/llmui_b
     [ -f "$candidate" ] && BACKEND_SCRIPT="$(realpath "$candidate")" && break
 done
 
-if [ -n "$BACKEND_SCRIPT" ]; then
-    print_msg "info" "Démarrage du backend LLMUI sur le port $APP_PORT..."
-    cd "$(dirname "$(dirname "$BACKEND_SCRIPT")")" 2>/dev/null || true
-    "$VENV_DIR/bin/python" "$BACKEND_SCRIPT" &
-    BACKEND_PID=$!
+if [ -n "$BACKEND_SCRIPT" ] && command -v systemctl &>/dev/null; then
+    PROJECT_DIR="$(dirname "$(dirname "$BACKEND_SCRIPT")")"
+    SERVICE_USER="${USER:-root}"
+    SERVICE_FILE="/etc/systemd/system/llmui-core.service"
 
-    if command -v curl &>/dev/null; then
-        if check_service_start "Backend" "curl -sf http://localhost:$APP_PORT/health"; then
-            print_msg "success" "Backend démarré (PID: $BACKEND_PID)"
-        else
-            print_msg "error" "Le backend n'a pas démarré — consultez les logs"
-            kill $BACKEND_PID 2>/dev/null || true
+    print_msg "info" "Génération de $SERVICE_FILE..."
+    sudo tee "$SERVICE_FILE" > /dev/null << SERVICEEOF
+[Unit]
+Description=LLMUI Core — Technologies Nexios TF Inc.
+After=network.target postgresql.service redis.service
+
+[Service]
+Type=simple
+User=$SERVICE_USER
+WorkingDirectory=$PROJECT_DIR
+EnvironmentFile=$ENV_FILE
+ExecStart=$VENV_DIR/bin/python $BACKEND_SCRIPT
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+SERVICEEOF
+
+    if sudo systemctl daemon-reload 2>>"$ERROR_LOG" \
+        && sudo systemctl enable llmui-core 2>>"$ERROR_LOG" \
+        && sudo systemctl restart llmui-core 2>>"$ERROR_LOG"; then
+        print_msg "success" "Service systemd llmui-core activé et démarré"
+
+        if command -v curl &>/dev/null; then
+            if check_service_start "Backend" "curl -sf http://localhost:$APP_PORT/health"; then
+                print_msg "success" "Backend opérationnel sur le port $APP_PORT"
+            else
+                print_msg "error" "Le backend ne répond pas — consultez : sudo journalctl -u llmui-core -n 50 --no-pager"
+            fi
         fi
     else
-        sleep 3
-        if kill -0 $BACKEND_PID 2>/dev/null; then
-            print_msg "success" "Backend démarré (PID: $BACKEND_PID)"
-        else
-            print_msg "error" "Le backend s'est arrêté immédiatement"
-        fi
+        print_msg "error" "Échec de l'activation du service systemd — consultez $ERROR_LOG"
     fi
 else
-    print_msg "warning" "src/llmui_backend.py introuvable — démarrez manuellement après déploiement"
+    print_msg "warning" "src/llmui_backend.py ou systemctl introuvable — démarrez manuellement après déploiement"
+fi
+
+wait_for_continue
+
+# ============================================================================
+# ÉTAPE 8 — PARE-FEU (UFW)
+# ============================================================================
+print_msg "step" "Étape 8/8 : Configuration du pare-feu (ufw)"
+echo ""
+
+if command -v ufw &>/dev/null; then
+    sudo ufw allow 22/tcp comment 'SSH' 2>>"$ERROR_LOG" >/dev/null \
+        && print_msg "success" "Règle ufw : port 22/tcp (SSH) autorisé" \
+        || print_msg "warning" "Échec ajout règle ufw pour le port 22/tcp"
+
+    sudo ufw allow "${APP_PORT}/tcp" comment 'LLMUI Core' 2>>"$ERROR_LOG" >/dev/null \
+        && print_msg "success" "Règle ufw : port $APP_PORT/tcp (LLMUI Core) autorisé" \
+        || print_msg "warning" "Échec ajout règle ufw pour le port $APP_PORT/tcp"
+
+    sudo ufw allow 80/tcp comment 'HTTP (Nginx/certbot)' 2>>"$ERROR_LOG" >/dev/null \
+        && print_msg "success" "Règle ufw : port 80/tcp (HTTP) autorisé" \
+        || print_msg "warning" "Échec ajout règle ufw pour le port 80/tcp"
+
+    sudo ufw allow 443/tcp comment 'HTTPS (Nginx)' 2>>"$ERROR_LOG" >/dev/null \
+        && print_msg "success" "Règle ufw : port 443/tcp (HTTPS) autorisé" \
+        || print_msg "warning" "Échec ajout règle ufw pour le port 443/tcp"
+
+    if sudo ufw status 2>/dev/null | grep -qw "active"; then
+        print_msg "success" "ufw actif — règles appliquées immédiatement"
+    else
+        print_msg "warning" "ufw inactif — règles enregistrées mais pare-feu non activé"
+        print_msg "info" "Pour activer (vérifiez d'abord la règle SSH 22/tcp) : sudo ufw enable"
+    fi
+else
+    print_msg "warning" "ufw absent — installez-le pour activer le pare-feu (postInstallScripts/README.md)"
 fi
 
 # ============================================================================
@@ -507,6 +562,10 @@ if show_error_summary; then
     echo -e "  ${BLUE}Interface web :${NC}  ${GREEN}http://$SERVER_IP:$APP_PORT${NC}"
     echo -e "  ${BLUE}API docs      :${NC}  ${GREEN}http://localhost:$APP_PORT/docs${NC}"
     echo -e "  ${BLUE}Health check  :${NC}  ${GREEN}http://localhost:$APP_PORT/health${NC}"
+    echo ""
+    echo -e "  ${BLUE}Service       :${NC}  ${GREEN}sudo systemctl status llmui-core${NC}"
+    echo -e "  ${BLUE}Logs service  :${NC}  ${GREEN}sudo journalctl -u llmui-core -f${NC}"
+    echo -e "  ${BLUE}Pare-feu      :${NC}  ${GREEN}sudo ufw status${NC}"
     echo ""
     echo -e "  ${BLUE}Fichier .env  :${NC}  ${YELLOW}$INSTALL_DIR/.env${NC}"
     echo -e "  ${BLUE}Logs install  :${NC}  ${YELLOW}$LOG_FILE${NC}"
