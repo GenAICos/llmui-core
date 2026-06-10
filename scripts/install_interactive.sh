@@ -458,9 +458,9 @@ fi
 wait_for_continue
 
 # ============================================================================
-# ÉTAPE 7 — SERVICE SYSTEMD
+# ÉTAPE 7 — SERVICES SYSTEMD
 # ============================================================================
-print_msg "step" "Étape 7/8 : Création du service systemd"
+print_msg "step" "Étape 7/8 : Création des services systemd"
 echo ""
 
 BACKEND_SCRIPT=""
@@ -471,12 +471,13 @@ done
 if [ -n "$BACKEND_SCRIPT" ] && command -v systemctl &>/dev/null; then
     PROJECT_DIR="$(dirname "$(dirname "$BACKEND_SCRIPT")")"
     SERVICE_USER="${USER:-root}"
-    SERVICE_FILE="/etc/systemd/system/llmui-core.service"
+    PROXY_SCRIPT="$(dirname "$BACKEND_SCRIPT")/llmui_proxy.py"
 
-    print_msg "info" "Génération de $SERVICE_FILE..."
-    sudo tee "$SERVICE_FILE" > /dev/null << SERVICEEOF
+    # --- llmui-core : API FastAPI interne (127.0.0.1:$APP_PORT, C-06) ---
+    print_msg "info" "Génération de /etc/systemd/system/llmui-core.service..."
+    sudo tee /etc/systemd/system/llmui-core.service > /dev/null << SERVICEEOF
 [Unit]
-Description=LLMUI Core — Technologies Nexios TF Inc.
+Description=LLMUI Core — API Backend — Technologies Nexios TF Inc.
 After=network.target postgresql.service redis.service
 
 [Service]
@@ -497,17 +498,68 @@ SERVICEEOF
     if sudo systemctl daemon-reload 2>>"$ERROR_LOG" \
         && sudo systemctl enable llmui-core 2>>"$ERROR_LOG" \
         && sudo systemctl restart llmui-core 2>>"$ERROR_LOG"; then
-        print_msg "success" "Service systemd llmui-core activé et démarré"
+        print_msg "success" "Service systemd llmui-core (API) activé et démarré"
 
         if command -v curl &>/dev/null; then
-            if check_service_start "Backend" "curl -sf http://localhost:$APP_PORT/health"; then
-                print_msg "success" "Backend opérationnel sur le port $APP_PORT"
+            if check_service_start "API backend" "curl -sf http://localhost:$APP_PORT/health"; then
+                print_msg "success" "API backend opérationnelle sur 127.0.0.1:$APP_PORT"
             else
-                print_msg "error" "Le backend ne répond pas — consultez : sudo journalctl -u llmui-core -n 50 --no-pager"
+                print_msg "error" "L'API ne répond pas — consultez : sudo journalctl -u llmui-core -n 50 --no-pager"
             fi
         fi
     else
-        print_msg "error" "Échec de l'activation du service systemd — consultez $ERROR_LOG"
+        print_msg "error" "Échec de l'activation de llmui-core — consultez $ERROR_LOG"
+    fi
+
+    # --- llmui-proxy : interface web publique + proxy authentifié ---
+    if [ -f "$PROXY_SCRIPT" ]; then
+        print_msg "info" "Génération de /etc/systemd/system/llmui-proxy.service..."
+        sudo tee /etc/systemd/system/llmui-proxy.service > /dev/null << SERVICEEOF
+[Unit]
+Description=LLMUI Core — Proxy Web — Technologies Nexios TF Inc.
+After=network.target llmui-core.service
+Wants=llmui-core.service
+
+[Service]
+Type=simple
+User=$SERVICE_USER
+WorkingDirectory=$PROJECT_DIR
+EnvironmentFile=$ENV_FILE
+ExecStart=$VENV_DIR/bin/python $PROXY_SCRIPT
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+SERVICEEOF
+
+        if sudo systemctl daemon-reload 2>>"$ERROR_LOG" \
+            && sudo systemctl enable llmui-proxy 2>>"$ERROR_LOG" \
+            && sudo systemctl restart llmui-proxy 2>>"$ERROR_LOG"; then
+            print_msg "success" "Service systemd llmui-proxy (interface web) activé et démarré"
+
+            if [ -f "$INSTALL_DIR/ssl/llmui.crt" ] && [ -f "$INSTALL_DIR/ssl/llmui.key" ]; then
+                PROXY_HEALTH_URL="https://localhost:8443/health"
+                PROXY_CURL_OPTS="-k"
+            else
+                PROXY_HEALTH_URL="http://localhost:8000/health"
+                PROXY_CURL_OPTS=""
+            fi
+
+            if command -v curl &>/dev/null; then
+                if check_service_start "Proxy web" "curl -sf $PROXY_CURL_OPTS $PROXY_HEALTH_URL"; then
+                    print_msg "success" "Interface web opérationnelle ($PROXY_HEALTH_URL)"
+                else
+                    print_msg "error" "Le proxy web ne répond pas — consultez : sudo journalctl -u llmui-proxy -n 50 --no-pager"
+                fi
+            fi
+        else
+            print_msg "error" "Échec de l'activation de llmui-proxy — consultez $ERROR_LOG"
+        fi
+    else
+        print_msg "warning" "src/llmui_proxy.py introuvable — interface web non démarrée"
     fi
 else
     print_msg "warning" "src/llmui_backend.py ou systemctl introuvable — démarrez manuellement après déploiement"
@@ -526,9 +578,13 @@ if command -v ufw &>/dev/null; then
         && print_msg "success" "Règle ufw : port 22/tcp (SSH) autorisé" \
         || print_msg "warning" "Échec ajout règle ufw pour le port 22/tcp"
 
-    sudo ufw allow "${APP_PORT}/tcp" comment 'LLMUI Core' 2>>"$ERROR_LOG" >/dev/null \
-        && print_msg "success" "Règle ufw : port $APP_PORT/tcp (LLMUI Core) autorisé" \
-        || print_msg "warning" "Échec ajout règle ufw pour le port $APP_PORT/tcp"
+    sudo ufw allow 8000/tcp comment 'LLMUI Core — proxy HTTP' 2>>"$ERROR_LOG" >/dev/null \
+        && print_msg "success" "Règle ufw : port 8000/tcp (LLMUI Core HTTP) autorisé" \
+        || print_msg "warning" "Échec ajout règle ufw pour le port 8000/tcp"
+
+    sudo ufw allow 8443/tcp comment 'LLMUI Core — proxy HTTPS' 2>>"$ERROR_LOG" >/dev/null \
+        && print_msg "success" "Règle ufw : port 8443/tcp (LLMUI Core HTTPS) autorisé" \
+        || print_msg "warning" "Échec ajout règle ufw pour le port 8443/tcp"
 
     sudo ufw allow 80/tcp comment 'HTTP (Nginx/certbot)' 2>>"$ERROR_LOG" >/dev/null \
         && print_msg "success" "Règle ufw : port 80/tcp (HTTP) autorisé" \
@@ -559,12 +615,14 @@ if show_error_summary; then
     echo ""
     echo -e "${GREEN}🎉 LLMUI Core v1.0.0 installé !${NC}"
     echo ""
-    echo -e "  ${BLUE}Interface web :${NC}  ${GREEN}http://$SERVER_IP:$APP_PORT${NC}"
+    echo -e "  ${BLUE}Interface web :${NC}  ${GREEN}http://$SERVER_IP:8000${NC} ${YELLOW}(ou https://$SERVER_IP:8443 si SSL configuré)${NC}"
     echo -e "  ${BLUE}API docs      :${NC}  ${GREEN}http://localhost:$APP_PORT/docs${NC}"
     echo -e "  ${BLUE}Health check  :${NC}  ${GREEN}http://localhost:$APP_PORT/health${NC}"
     echo ""
-    echo -e "  ${BLUE}Service       :${NC}  ${GREEN}sudo systemctl status llmui-core${NC}"
-    echo -e "  ${BLUE}Logs service  :${NC}  ${GREEN}sudo journalctl -u llmui-core -f${NC}"
+    echo -e "  ${BLUE}Service API   :${NC}  ${GREEN}sudo systemctl status llmui-core${NC}"
+    echo -e "  ${BLUE}Service web   :${NC}  ${GREEN}sudo systemctl status llmui-proxy${NC}"
+    echo -e "  ${BLUE}Logs API      :${NC}  ${GREEN}sudo journalctl -u llmui-core -f${NC}"
+    echo -e "  ${BLUE}Logs web      :${NC}  ${GREEN}sudo journalctl -u llmui-proxy -f${NC}"
     echo -e "  ${BLUE}Pare-feu      :${NC}  ${GREEN}sudo ufw status${NC}"
     echo ""
     echo -e "  ${BLUE}Fichier .env  :${NC}  ${YELLOW}$INSTALL_DIR/.env${NC}"
