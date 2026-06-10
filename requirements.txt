@@ -42,7 +42,7 @@ safetensors==0.4.1
 # DATABASE & CACHING
 redis==5.0.1
 hiredis==2.2.3
-sqlalchemy[asyncio]==2.0.23
+sqlalchemy[asyncio]==2.0.36
 alembic==1.12.1
 asyncpg==0.30.0
 
