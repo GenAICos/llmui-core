@@ -371,7 +371,11 @@ APP_ENV=production
 ENVEOF
         print_msg "info" ".env minimal créé"
     fi
-    print_msg "warning" "⚠️  Éditez $ENV_FILE — remplacez CHANGEME par votre mot de passe PostgreSQL !"
+    # Génère un mot de passe PostgreSQL fort (remplace le placeholder CHANGEME).
+    # L'étape 6 réutilisera ce mot de passe pour créer le rôle llmui_user.
+    GENERATED_DB_PASS="$(openssl rand -hex 32)"
+    sed -i "s#://llmui_user:CHANGEME@#://llmui_user:${GENERATED_DB_PASS}@#" "$ENV_FILE"
+    print_msg "success" "Mot de passe PostgreSQL généré automatiquement dans $ENV_FILE"
 fi
 
 # Certificats SSL (optionnel)
@@ -413,11 +417,24 @@ if command -v psql &>/dev/null; then
         done
 
         if [ -n "$SQL_SCRIPT" ]; then
-            print_msg "warning" "⚠️  Vérifiez que DB_PASSWORD a été remplacé dans $SQL_SCRIPT avant de continuer"
-            wait_for_continue
-            sudo -u postgres psql -f "$SQL_SCRIPT" 2>>"$ERROR_LOG" \
-                && print_msg "success" "Base de données llmui_core configurée" \
-                || print_msg "warning" "Déjà existante ou erreur — vérifiez $ERROR_LOG (script idempotent)"
+            # Récupère le mot de passe depuis .env pour créer le rôle llmui_user
+            # avec le même mot de passe (évite tout désalignement .env / DB).
+            DB_PASS="$(sed -n 's#^DATABASE_URL=.*://[^:]*:\([^@]*\)@.*#\1#p' "$ENV_FILE")"
+            if [ -z "$DB_PASS" ]; then
+                print_msg "warning" "Mot de passe introuvable dans $ENV_FILE — exécutez create_database.sql manuellement (postInstallScripts/README.md)"
+            else
+                # Copie temporaire avec mot de passe injecté : `psql -f` en
+                # `sudo -u postgres` échoue sur les fichiers sous /root (pas de
+                # droit de traversée pour postgres) — on lit donc via stdin,
+                # ouvert par root avant le changement d'utilisateur.
+                DB_PASS_ESCAPED="$(printf '%s' "$DB_PASS" | sed -e 's/[\/&]/\\&/g')"
+                TMP_SQL="$(mktemp)"
+                sed "s/DB_PASSWORD/$DB_PASS_ESCAPED/g" "$SQL_SCRIPT" > "$TMP_SQL"
+                sudo -u postgres psql < "$TMP_SQL" 2>>"$ERROR_LOG" \
+                    && print_msg "success" "Base de données llmui_core configurée (mot de passe synchronisé avec $ENV_FILE)" \
+                    || print_msg "warning" "Erreur lors de la configuration — vérifiez $ERROR_LOG (script idempotent)"
+                rm -f "$TMP_SQL"
+            fi
         else
             print_msg "warning" "create_database.sql introuvable — créez la DB manuellement (postInstallScripts/README.md)"
         fi
