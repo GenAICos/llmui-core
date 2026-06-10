@@ -13,13 +13,16 @@ class AuthManager {
         // Theme management
         this.loadTheme();
         this.setupThemeToggle();
-        
+
         // Password visibility toggle
         this.setupPasswordToggle();
-        
+
         // Form submission
         this.setupFormSubmission();
-        
+
+        // Configuration TOTP (H-05)
+        this.setupTotpHandlers();
+
         // Check if already logged in
         this.checkExistingSession();
     }
@@ -50,7 +53,7 @@ class AuthManager {
     setupPasswordToggle() {
         const togglePassword = document.getElementById('togglePassword');
         const passwordInput = document.getElementById('password');
-        
+
         if (togglePassword && passwordInput) {
             togglePassword.addEventListener('click', () => {
                 const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
@@ -75,6 +78,44 @@ class AuthManager {
             forgotPassword.addEventListener('click', (e) => {
                 e.preventDefault();
                 this.showAlert('info', 'Contactez l\'administrateur système pour réinitialiser votre mot de passe.');
+            });
+        }
+    }
+
+    setupTotpHandlers() {
+        // Copier la clé secrète TOTP dans le presse-papiers
+        const copyButton = document.getElementById('copyTotpSecret');
+        const totpSecret = document.getElementById('totpSecret');
+        if (copyButton && totpSecret) {
+            copyButton.addEventListener('click', async () => {
+                try {
+                    await navigator.clipboard.writeText(totpSecret.textContent);
+                    const original = copyButton.textContent;
+                    copyButton.textContent = '✅';
+                    setTimeout(() => {
+                        copyButton.textContent = original;
+                    }, 1500);
+                } catch (error) {
+                    console.error('Erreur lors de la copie de la clé TOTP:', error);
+                }
+            });
+        }
+
+        // Confirmation de l'activation TOTP
+        const activateButton = document.getElementById('totpActivateButton');
+        if (activateButton) {
+            activateButton.addEventListener('click', () => {
+                this.handleTotpActivate();
+            });
+        }
+
+        const activateCode = document.getElementById('totpActivateCode');
+        if (activateCode) {
+            activateCode.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.handleTotpActivate();
+                }
             });
         }
     }
@@ -105,6 +146,8 @@ class AuthManager {
         const username = document.getElementById('username').value.trim();
         const password = document.getElementById('password').value;
         const rememberMe = document.getElementById('rememberMe').checked;
+        const totpInput = document.getElementById('totpCode');
+        const totpCode = totpInput ? totpInput.value.trim() : '';
         const loginButton = document.getElementById('loginButton');
 
         // Validation
@@ -118,23 +161,24 @@ class AuthManager {
         loginButton.innerHTML = '<span class="loading-spinner"></span>Connexion en cours...';
 
         try {
+            const credentials = { username, password, rememberMe };
+            if (totpCode) {
+                credentials.totpCode = totpCode;
+            }
+
             const response = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 credentials: 'include',
-                body: JSON.stringify({
-                    username,
-                    password,
-                    rememberMe
-                })
+                body: JSON.stringify(credentials)
             });
 
             // Vérifier le Content-Type pour savoir comment parser la réponse
             const contentType = response.headers.get('content-type');
             let data;
-            
+
             if (contentType && contentType.includes('application/json')) {
                 // Réponse JSON
                 data = await response.json();
@@ -142,8 +186,8 @@ class AuthManager {
                 // Réponse non-JSON (probablement texte brut ou HTML)
                 const text = await response.text();
                 console.warn('Réponse non-JSON reçue:', text);
-                data = { 
-                    success: false, 
+                data = {
+                    success: false,
                     message: response.ok ? 'Réponse serveur invalide' : 'Nom d\'utilisateur ou mot de passe incorrect'
                 };
             }
@@ -151,7 +195,7 @@ class AuthManager {
             if (response.ok && data.success) {
                 // Login successful (200 OK)
                 this.showAlert('success', 'Connexion réussie ! Redirection...');
-                
+
                 // Store user info in localStorage if remember me is checked
                 if (rememberMe) {
                     localStorage.setItem('llmui_username', username);
@@ -161,18 +205,156 @@ class AuthManager {
                 setTimeout(() => {
                     window.location.href = '/index.html';
                 }, 1000);
-            } else {
-                // Login failed
-                const message = data.message || 'Nom d\'utilisateur ou mot de passe incorrect';
-                this.showAlert('error', message);
-                loginButton.disabled = false;
-                loginButton.innerHTML = 'Se connecter';
+                return;
             }
+
+            // Configuration TOTP requise (premier login admin) — H-05
+            if (data.totp_setup_required) {
+                await this.startTotpSetup();
+                this.resetLoginButton(loginButton);
+                return;
+            }
+
+            // Code TOTP requis (admin déjà configuré) — H-05
+            if (data.totp_required) {
+                this.showTotpInput();
+                this.showAlert('error', data.message || 'Veuillez entrer votre code de vérification.');
+                this.resetLoginButton(loginButton);
+                return;
+            }
+
+            // Login failed
+            const message = data.message || 'Nom d\'utilisateur ou mot de passe incorrect';
+            this.showAlert('error', message);
+            this.resetLoginButton(loginButton);
         } catch (error) {
             console.error('Login error:', error);
             this.showAlert('error', 'Erreur de connexion au serveur. Veuillez réessayer.');
-            loginButton.disabled = false;
-            loginButton.innerHTML = 'Se connecter';
+            this.resetLoginButton(loginButton);
+        }
+    }
+
+    resetLoginButton(loginButton) {
+        const totpGroup = document.getElementById('totpGroup');
+        const totpVisible = totpGroup && !totpGroup.classList.contains('hidden');
+        loginButton.disabled = false;
+        loginButton.innerHTML = totpVisible ? 'Vérifier' : 'Se connecter';
+    }
+
+    showTotpInput() {
+        const totpGroup = document.getElementById('totpGroup');
+        const totpInput = document.getElementById('totpCode');
+        if (totpGroup) {
+            totpGroup.classList.remove('hidden');
+        }
+        if (totpInput) {
+            totpInput.focus();
+        }
+    }
+
+    async startTotpSetup() {
+        try {
+            const response = await fetch('/api/auth/totp/setup', {
+                method: 'POST',
+                credentials: 'include'
+            });
+
+            const contentType = response.headers.get('content-type');
+            const data = (contentType && contentType.includes('application/json'))
+                ? await response.json()
+                : null;
+
+            if (!response.ok || !data || !data.success) {
+                this.showAlert('error', 'Impossible d\'initialiser la configuration TOTP. Veuillez réessayer.');
+                return;
+            }
+
+            this.displayTotpSetup(data);
+        } catch (error) {
+            console.error('TOTP setup error:', error);
+            this.showAlert('error', 'Erreur de connexion au serveur. Veuillez réessayer.');
+        }
+    }
+
+    displayTotpSetup(data) {
+        const loginForm = document.getElementById('loginForm');
+        const footerLinks = document.querySelector('.footer-links');
+        const totpSetup = document.getElementById('totpSetup');
+        const totpSecret = document.getElementById('totpSecret');
+        const totpUriLink = document.getElementById('totpUriLink');
+        const recoveryList = document.getElementById('totpRecoveryCodes');
+
+        if (totpSecret) {
+            totpSecret.textContent = data.secret;
+        }
+        if (totpUriLink) {
+            totpUriLink.href = data.otpauth_uri;
+        }
+        if (recoveryList) {
+            recoveryList.innerHTML = '';
+            (data.recovery_codes || []).forEach(code => {
+                const li = document.createElement('li');
+                li.textContent = code;
+                recoveryList.appendChild(li);
+            });
+        }
+
+        if (loginForm) {
+            loginForm.classList.add('hidden');
+        }
+        if (footerLinks) {
+            footerLinks.classList.add('hidden');
+        }
+        if (totpSetup) {
+            totpSetup.classList.remove('hidden');
+        }
+    }
+
+    async handleTotpActivate() {
+        const codeInput = document.getElementById('totpActivateCode');
+        const activateButton = document.getElementById('totpActivateButton');
+        const code = codeInput ? codeInput.value.trim() : '';
+
+        if (!/^\d{6}$/.test(code)) {
+            this.showAlert('error', 'Le code doit contenir 6 chiffres.');
+            return;
+        }
+
+        activateButton.disabled = true;
+        activateButton.innerHTML = '<span class="loading-spinner"></span>Activation en cours...';
+
+        try {
+            const response = await fetch('/api/auth/totp/activate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({ code })
+            });
+
+            const contentType = response.headers.get('content-type');
+            const data = (contentType && contentType.includes('application/json'))
+                ? await response.json()
+                : null;
+
+            if (response.ok && data && data.success) {
+                this.showAlert('success', 'TOTP activé ! Redirection...');
+                setTimeout(() => {
+                    window.location.href = '/index.html';
+                }, 1000);
+                return;
+            }
+
+            const message = (data && (data.message || data.detail)) || 'Code TOTP invalide';
+            this.showAlert('error', message);
+            activateButton.disabled = false;
+            activateButton.innerHTML = 'Activer le TOTP';
+        } catch (error) {
+            console.error('TOTP activate error:', error);
+            this.showAlert('error', 'Erreur de connexion au serveur. Veuillez réessayer.');
+            activateButton.disabled = false;
+            activateButton.innerHTML = 'Activer le TOTP';
         }
     }
 
@@ -212,7 +394,7 @@ class AuthManager {
 // Initialize on DOM load
 document.addEventListener('DOMContentLoaded', () => {
     new AuthManager();
-    
+
     // Pre-fill username if remembered
     const rememberedUsername = localStorage.getItem('llmui_username');
     if (rememberedUsername) {
