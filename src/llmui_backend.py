@@ -280,8 +280,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=RUNTIME_CONFIG["cors_origins"],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 # Session — clé persistée en base (H-01), cookie restreint au strict
