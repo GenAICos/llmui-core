@@ -32,8 +32,8 @@ orjson==3.9.10
 # AI/ML - EMBEDDINGS & TRANSFORMERS
 sentence-transformers==2.2.2
 transformers==4.38.0
-torch>=2.2.0,<2.3.0
-torchvision>=0.17.0,<0.18.0
+torch>=2.2.0
+torchvision>=0.17.0
 huggingface-hub==0.19.4
 tokenizers==0.15.0
 accelerate==0.24.1
