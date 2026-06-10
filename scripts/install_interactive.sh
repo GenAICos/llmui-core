@@ -179,6 +179,17 @@ elif [ -n "$PKG_INSTALL" ]; then
         || print_msg "warning" "curl non installé — health checks désactivés"
 fi
 
+# --- Serveur PostgreSQL (STANDARDS.md — PostgreSQL 16+ obligatoire) ---
+print_msg "info" "Vérification du serveur PostgreSQL..."
+if command -v pg_lsclusters &>/dev/null || systemctl list-unit-files 2>/dev/null | grep -q 'postgresql'; then
+    print_msg "success" "Serveur PostgreSQL présent"
+elif [ -n "$PKG_INSTALL" ]; then
+    print_msg "warning" "Serveur PostgreSQL absent — installation..."
+    $PKG_INSTALL postgresql postgresql-contrib 2>>"$ERROR_LOG" \
+        && print_msg "success" "PostgreSQL installé et démarré" \
+        || print_msg "warning" "Échec installation PostgreSQL — installez-le manuellement (postInstallScripts/README.md)"
+fi
+
 # --- Client PostgreSQL ---
 print_msg "info" "Vérification de psql (client PostgreSQL)..."
 if command -v psql &>/dev/null; then
@@ -386,6 +397,12 @@ print_msg "step" "Étape 6/7 : Base de données PostgreSQL"
 echo ""
 
 if command -v psql &>/dev/null; then
+    if ! sudo -u postgres psql -c '\q' 2>/dev/null; then
+        print_msg "info" "PostgreSQL inaccessible — tentative de démarrage du service..."
+        sudo systemctl enable --now postgresql 2>>"$ERROR_LOG" || true
+        sleep 2
+    fi
+
     if sudo -u postgres psql -c '\q' 2>/dev/null; then
         print_msg "success" "PostgreSQL accessible"
 
@@ -405,7 +422,7 @@ if command -v psql &>/dev/null; then
             print_msg "warning" "create_database.sql introuvable — créez la DB manuellement (postInstallScripts/README.md)"
         fi
     else
-        print_msg "warning" "PostgreSQL inaccessible — démarrez-le : sudo systemctl start postgresql"
+        print_msg "warning" "PostgreSQL inaccessible — installez/démarrez-le : sudo apt install postgresql && sudo systemctl enable --now postgresql"
     fi
 else
     print_msg "warning" "psql absent — créez la base de données manuellement (postInstallScripts/README.md)"
