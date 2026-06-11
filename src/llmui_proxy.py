@@ -66,8 +66,17 @@ CONSENSUS_TIMEOUT = 14400
 HEALTH_TIMEOUT = 10
 MODELS_TIMEOUT = 10
 
+# Racine du dépôt (frère de src/) — install_interactive.sh exécute le code
+# en place depuis le clone (WorkingDirectory=PROJECT_DIR) ; seuls
+# venv/.env/ssl vivent sous /opt/llmui-core, pas web/ ni images/.
+PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 # Path to LLMUI web files
-LLMUI_WEB_DIR = "/opt/llmui-core/web/"
+LLMUI_WEB_DIR = os.path.join(PROJECT_DIR, "web")
+
+# Images partagées (logo, avatar Andy) — référencées par web/*.html via
+# ../images/, donc hors de LLMUI_WEB_DIR ; servies via /images/*
+IMAGES_DIR = os.path.join(PROJECT_DIR, "images")
 
 # Thread-safe storage for generated file metadata
 generated_files_metadata = {}
@@ -193,7 +202,12 @@ class LLMUIProxyHandler(http.server.SimpleHTTPRequestHandler):
         # Page de login - toujours accessible
         elif self.path in ['/login', '/login.html']:
             self.serve_login()
-        
+
+        # Images partagées (logo, avatar Andy) - hors web/, toujours
+        # accessibles (utilisées sur /login.html)
+        elif self.path.startswith("/images/"):
+            self.serve_image()
+
         # Ressources statiques pour login - toujours accessibles
         elif is_login_resource:
             super().do_GET()
@@ -279,7 +293,29 @@ class LLMUIProxyHandler(http.server.SimpleHTTPRequestHandler):
         except Exception as e:
             print(f"[ERROR] Serving login: {e}")
             self.send_error(500, str(e))
-    
+
+    def serve_image(self):
+        """Serve shared images (logo, avatar Andy) from IMAGES_DIR"""
+        try:
+            # os.path.basename évite tout traversal via self.path
+            filename = os.path.basename(self.path)
+            image_path = os.path.join(IMAGES_DIR, filename)
+            if filename and os.path.exists(image_path):
+                with open(image_path, 'rb') as f:
+                    content = f.read()
+
+                self.send_response(200)
+                self.send_header('Content-Type', self.guess_type(image_path))
+                self.send_header('Content-Length', str(len(content)))
+                self.send_header('Cache-Control', 'public, max-age=86400')
+                self.end_headers()
+                self.wfile.write(content)
+            else:
+                self.send_error(404, "Image not found")
+        except Exception as e:
+            print(f"[ERROR] Serving image: {e}")
+            self.send_error(500, str(e))
+
     def serve_generated_file(self):
         """Serve a generated file with path traversal protection"""
         try:
