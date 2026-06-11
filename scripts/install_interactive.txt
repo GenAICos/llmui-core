@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright © Technologies Nexios TF Inc. — nexiostf.com
+# Tous droits réservés
 
 # Script d'installation interactif pour LLMUI
 # Version: 0.5
@@ -32,7 +34,7 @@ print_msg() {
         "error")
             echo -e "${RED}❌ $msg${NC}"
             echo "❌ $msg" >> "$ERROR_LOG"
-            ((INSTALL_ERRORS++))
+            INSTALL_ERRORS=$((INSTALL_ERRORS + 1))
             ;;
         "warning")
             echo -e "${YELLOW}⚠️  $msg${NC}"
@@ -119,7 +121,71 @@ echo -e "${NC}"
 
 print_msg "info" "Ce script va installer LLMUI sur votre système"
 print_msg "info" "Répertoire d'installation : $INSTALL_DIR"
-wait_for_continue
+
+# ============================================================
+# CONFIGURATION INITIALE — collecte unique, avant tout
+# (standard Nexios TF : toutes les questions au début,
+#  zéro interruption pendant l'installation)
+# ============================================================
+echo ""
+echo "═══════════════════════════════════════════════"
+echo " CONFIGURATION INITIALE"
+echo "═══════════════════════════════════════════════"
+echo ""
+
+read -r -p "Nom d'utilisateur admin pour l'interface web [admin]: " ADMIN_USERNAME
+ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+
+read -r -p "Courriel de l'administrateur [admin@llmui.org]: " ADMIN_EMAIL
+ADMIN_EMAIL=${ADMIN_EMAIL:-admin@llmui.org}
+
+while true; do
+    read -r -s -p "Mot de passe admin (min 12 car., majuscule, minuscule, chiffre, spécial): " ADMIN_PASSWORD
+    echo ""
+    if [ ${#ADMIN_PASSWORD} -lt 12 ]; then
+        echo "❌ Le mot de passe doit contenir au moins 12 caractères"
+        continue
+    fi
+    case "$ADMIN_PASSWORD" in
+        *[A-Z]*) ;;
+        *) echo "❌ Le mot de passe doit contenir au moins une majuscule"; continue ;;
+    esac
+    case "$ADMIN_PASSWORD" in
+        *[a-z]*) ;;
+        *) echo "❌ Le mot de passe doit contenir au moins une minuscule"; continue ;;
+    esac
+    case "$ADMIN_PASSWORD" in
+        *[0-9]*) ;;
+        *) echo "❌ Le mot de passe doit contenir au moins un chiffre"; continue ;;
+    esac
+    case "$ADMIN_PASSWORD" in
+        *[!a-zA-Z0-9]*) ;;
+        *) echo "❌ Le mot de passe doit contenir au moins un caractère spécial"; continue ;;
+    esac
+    read -r -s -p "Confirmez le mot de passe: " ADMIN_PASSWORD_CONFIRM
+    echo ""
+    if [ "$ADMIN_PASSWORD" = "$ADMIN_PASSWORD_CONFIRM" ]; then
+        break
+    fi
+    echo "❌ Les mots de passe ne correspondent pas"
+done
+
+echo ""
+echo "═══════════════════════════════════════════════"
+echo " Récapitulatif :"
+echo "   Admin    : $ADMIN_USERNAME"
+echo "   Courriel : $ADMIN_EMAIL"
+echo "   Chemin   : $INSTALL_DIR"
+echo ""
+read -r -p " Confirmer et lancer l'installation ? [o/N] : " CONFIRM
+echo "═══════════════════════════════════════════════"
+case "$CONFIRM" in
+    o|O|oui|OUI) ;;
+    *)
+        print_msg "info" "Installation annulée"
+        exit 0
+        ;;
+esac
 
 # Étape 1: Vérification des prérequis
 print_msg "step" "Étape 1/8 : Vérification des prérequis"
@@ -247,6 +313,7 @@ python-multipart
 itsdangerous==2.2.0
 pytz==2025.2
 pyyaml
+argon2-cffi==23.1.0
 bcrypt==4.0.1
 EOF
 fi
@@ -298,12 +365,16 @@ print_msg "step" "Étape 7/8 : Création du compte administrateur"
 echo ""
 
 print_msg "info" "Configuration du compte de connexion à l'interface web..."
-if "$VENV_DIR/bin/python" "$INSTALL_DIR/scripts/create_admin_user.py"; then
-    print_msg "success" "Compte administrateur configuré"
+# Identifiants collectés au début de l'installation — aucune interaction ici.
+# Le mot de passe passe par l'environnement (jamais en argument : visible dans ps).
+if LLMUI_ADMIN_PASSWORD="$ADMIN_PASSWORD" "$VENV_DIR/bin/python" "$INSTALL_DIR/scripts/create_admin_user.py" \
+        --username "$ADMIN_USERNAME" --email "$ADMIN_EMAIL"; then
+    print_msg "success" "Compte administrateur '$ADMIN_USERNAME' configuré"
 else
     print_msg "error" "Échec de la création du compte administrateur"
     print_msg "info" "Vous pourrez le créer plus tard : $VENV_DIR/bin/python $INSTALL_DIR/scripts/create_admin_user.py"
 fi
+unset ADMIN_PASSWORD ADMIN_PASSWORD_CONFIRM
 
 wait_for_continue
 
