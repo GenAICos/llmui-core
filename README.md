@@ -107,7 +107,12 @@ nginx -t && systemctl reload nginx
 python3 src/llmui_backend.py
 ```
 
-Ou via systemd (voir `scripts/install.sh` pour l'installation complète des services).
+Ou via systemd. Pour une installation complète automatisée (prérequis, PostgreSQL,
+services systemd, pare-feu), utilisez l'installateur interactif :
+
+```bash
+sudo ./scripts/install_interactive.sh
+```
 
 ---
 

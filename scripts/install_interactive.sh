@@ -17,20 +17,33 @@ NC='\033[0m'
 
 INSTALL_DIR="/opt/llmui-core"
 VENV_DIR="$INSTALL_DIR/venv"
+DATA_DIR="/var/lib/llmui"            # Fichiers générés par le proxy (M-10)
+LOG_DIR="/var/log/llmui"
 LOG_FILE="/tmp/llmui_install.log"
 ERROR_LOG="/tmp/llmui_errors.log"
 INSTALL_ERRORS=0
 APP_PORT="${APP_PORT:-8004}"
 
+# Utilisateur de service : l'utilisateur réel même lorsque le script est lancé
+# via `sudo` (SUDO_USER), jamais root par accident. Les services systemd,
+# /var/lib/llmui et les certificats SSL lui appartiendront — sinon le proxy,
+# qui crée $DATA_DIR/generated à l'import, planterait au démarrage.
+SERVICE_USER="${SUDO_USER:-${USER:-root}}"
+SERVICE_GROUP="$SERVICE_USER"
+
 print_msg() {
     local type=$1 msg=$2
     case $type in
         success) echo -e "${GREEN}✅ $msg${NC}"; echo "OK  $msg" >> "$LOG_FILE" ;;
-        error)   echo -e "${RED}❌ $msg${NC}"; echo "ERR $msg" >> "$ERROR_LOG"; ((INSTALL_ERRORS++)) ;;
+        error)   echo -e "${RED}❌ $msg${NC}"; echo "ERR $msg" >> "$ERROR_LOG"; INSTALL_ERRORS=$((INSTALL_ERRORS + 1)) ;;
         warning) echo -e "${YELLOW}⚠️  $msg${NC}"; echo "WRN $msg" >> "$LOG_FILE" ;;
         info)    echo -e "${BLUE}ℹ️  $msg${NC}"; echo "INF $msg" >> "$LOG_FILE" ;;
         step)    echo -e "${CYAN}▶ $msg${NC}"; echo ">>> $msg" >> "$LOG_FILE" ;;
     esac
+    # Ne jamais renvoyer un code non nul : sous `set -e`, un appel direct
+    # `print_msg "error" ...` (hors `||`) terminerait sinon le script — or la
+    # conception veut cumuler les erreurs (INSTALL_ERRORS) puis exit final.
+    return 0
 }
 
 wait_for_continue() {
@@ -70,8 +83,31 @@ show_error_summary() {
     fi
 }
 
-> "$LOG_FILE"
-> "$ERROR_LOG"
+# Assigne un port libre dans la plage 8000-8999 (STANDARDS.md §8). Le port
+# par défaut (8004) est souvent suffisant ; s'il est occupé, on prend le
+# suivant disponible. La valeur retenue est ensuite écrite dans .env (étape 5).
+assign_app_port() {
+    local default_port="${APP_PORT}" port="${APP_PORT}"
+    if ! command -v ss &>/dev/null; then
+        return 0   # ss absent : on conserve le port par défaut sans vérifier
+    fi
+    while ss -tln 2>/dev/null | grep -q ":${port} "; do
+        port=$((port + 1))
+        if [ "${port}" -gt 8999 ]; then
+            print_msg "error" "Aucun port libre dans la plage 8000-8999"
+            exit 1
+        fi
+    done
+    if [ "${port}" -ne "${default_port}" ]; then
+        print_msg "warning" "Port ${default_port} occupé — APP_PORT assigné → ${port}"
+    fi
+    APP_PORT="${port}"
+}
+
+: > "$LOG_FILE"
+: > "$ERROR_LOG"
+
+assign_app_port
 
 # ============================================================================
 # BANNER
@@ -201,6 +237,20 @@ elif [ -n "$PKG_INSTALL" ]; then
         || print_msg "warning" "postgresql-client non installé — exécutez create_database.sql manuellement"
 fi
 
+# --- Redis (cache + rate limiting auth — llmui_backend.py : After=redis.service) ---
+print_msg "info" "Vérification de Redis..."
+if command -v redis-cli &>/dev/null && redis-cli ping 2>/dev/null | grep -q PONG; then
+    print_msg "success" "Redis actif"
+elif [ -n "$PKG_INSTALL" ]; then
+    print_msg "warning" "Redis absent ou arrêté — installation/démarrage..."
+    $PKG_INSTALL redis-server 2>>"$ERROR_LOG" \
+        && sudo systemctl enable --now redis-server 2>>"$ERROR_LOG" \
+        && print_msg "success" "Redis installé et démarré" \
+        || print_msg "warning" "Redis indisponible — rate limiting en mode fail-open (non bloquant)"
+else
+    print_msg "warning" "Redis absent — rate limiting en mode fail-open (non bloquant)"
+fi
+
 # --- Ollama ---
 print_msg "info" "Vérification d'Ollama..."
 if command -v ollama &>/dev/null; then
@@ -244,14 +294,26 @@ wait_for_continue
 print_msg "step" "Étape 2/8 : Création de la structure de fichiers"
 echo ""
 
-if sudo mkdir -p "$INSTALL_DIR"/{src,web,ssl,scripts,docs,tests,images,tools,postInstallScripts} 2>>"$ERROR_LOG"; then
-    print_msg "success" "Structure créée dans $INSTALL_DIR"
+# Le code s'exécute en place depuis le clone (WorkingDirectory du service) ;
+# sous $INSTALL_DIR ne vivent que le venv, le .env et les certificats SSL.
+if sudo mkdir -p "$INSTALL_DIR/ssl" 2>>"$ERROR_LOG"; then
+    print_msg "success" "Répertoire applicatif prêt : $INSTALL_DIR"
 else
-    print_msg "error" "Échec de la création de la structure"
+    print_msg "error" "Échec de la création de $INSTALL_DIR"
 fi
 
-if sudo chown -R "$USER:$USER" "$INSTALL_DIR" 2>>"$ERROR_LOG"; then
-    print_msg "success" "Permissions configurées pour $USER"
+# $DATA_DIR/generated est créé par llmui_proxy.py dès l'import : il DOIT
+# exister et appartenir au compte de service, sinon le proxy plante au
+# démarrage (PermissionError sous /var/lib pour un utilisateur non-root).
+if sudo mkdir -p "$DATA_DIR/generated" "$LOG_DIR" 2>>"$ERROR_LOG"; then
+    print_msg "success" "Données ($DATA_DIR) et logs ($LOG_DIR) créés"
+else
+    print_msg "error" "Échec de la création de $DATA_DIR / $LOG_DIR"
+fi
+
+if sudo chown -R "$SERVICE_USER:$SERVICE_GROUP" "$INSTALL_DIR" "$DATA_DIR" "$LOG_DIR" 2>>"$ERROR_LOG"; then
+    sudo chmod 700 "$DATA_DIR/generated" 2>>"$ERROR_LOG" || true
+    print_msg "success" "Permissions configurées pour $SERVICE_USER"
 else
     print_msg "error" "Échec des permissions"
 fi
@@ -309,28 +371,26 @@ else
     print_msg "warning" "requirements.txt introuvable — création du fichier minimal v1.0.0..."
     REQUIREMENTS_FILE="$INSTALL_DIR/requirements.txt"
     cat > "$REQUIREMENTS_FILE" << 'REQEOF'
-# LLMUI Core v1.0.0 — dépendances minimales
-# Copyright © Technologies Nexios TF Inc.
-fastapi==0.104.1
+# LLMUI Core — dépendances runtime minimales (secours)
+# Copyright © Technologies Nexios TF Inc. — nexiostf.com
+fastapi==0.109.2
 uvicorn[standard]==0.24.0
-starlette==0.27.0
-httpx==0.25.2
-pydantic==2.5.0
-python-multipart==0.0.6
+starlette==0.36.3
+python-multipart==0.0.7
 itsdangerous==2.1.2
-python-dotenv==1.0.0
-PyYAML==6.0.1
+httpx==0.25.2
+pydantic==2.8.2
+pytz==2024.1
 # Sécurité (STANDARDS.md §6 — Argon2 obligatoire, jamais bcrypt)
 argon2-cffi==23.1.0
 passlib[argon2]==1.7.4
-PyJWT==2.8.0
 pyotp==2.9.0
-cryptography==41.0.7
-# PostgreSQL async (STANDARDS.md — jamais SQLite)
-asyncpg==0.29.0
-sqlalchemy[asyncio]==2.0.23
+cryptography==42.0.4
+# PostgreSQL async + migrations (STANDARDS.md §2 — jamais SQLite)
+asyncpg==0.30.0
+sqlalchemy[asyncio]==2.0.36
 alembic==1.12.1
-# Cache
+# Cache / rate limiting
 redis==5.0.1
 REQEOF
     print_msg "info" "Fichier minimal créé"
@@ -359,6 +419,10 @@ done
 
 if [ -f "$ENV_FILE" ]; then
     print_msg "info" ".env existant conservé"
+    # Un .env préexistant fait foi : on aligne APP_PORT (script + systemd +
+    # health-check) sur sa valeur plutôt que de l'écraser.
+    EXISTING_PORT="$(sed -n 's/^APP_PORT=//p' "$ENV_FILE" | head -1)"
+    [ -n "$EXISTING_PORT" ] && APP_PORT="$EXISTING_PORT"
 else
     if [ -n "$ENV_EXAMPLE" ]; then
         cp "$ENV_EXAMPLE" "$ENV_FILE"
@@ -371,12 +435,20 @@ APP_ENV=production
 ENVEOF
         print_msg "info" ".env minimal créé"
     fi
+    # Force le port réellement assigné (assign_app_port) dans le .env neuf,
+    # que celui-ci vienne du heredoc ou d'une copie de .env.example (8004).
+    if grep -q '^APP_PORT=' "$ENV_FILE"; then
+        sed -i "s/^APP_PORT=.*/APP_PORT=${APP_PORT}/" "$ENV_FILE"
+    else
+        printf 'APP_PORT=%s\n' "$APP_PORT" >> "$ENV_FILE"
+    fi
     # Génère un mot de passe PostgreSQL fort (remplace le placeholder CHANGEME).
     # L'étape 6 réutilisera ce mot de passe pour créer le rôle llmui_user.
     GENERATED_DB_PASS="$(openssl rand -hex 32)"
     sed -i "s#://llmui_user:CHANGEME@#://llmui_user:${GENERATED_DB_PASS}@#" "$ENV_FILE"
     print_msg "success" "Mot de passe PostgreSQL généré automatiquement dans $ENV_FILE"
 fi
+print_msg "info" "Port applicatif retenu : $APP_PORT"
 
 # Certificats SSL (optionnel)
 if [ ! -f "$INSTALL_DIR/ssl/llmui.crt" ]; then
@@ -386,9 +458,15 @@ if [ ! -f "$INSTALL_DIR/ssl/llmui.crt" ]; then
         [ -f "$candidate" ] && SSL_SCRIPT="$candidate" && break
     done
     if [ -n "$SSL_SCRIPT" ]; then
-        bash "$SSL_SCRIPT" 2>>"$ERROR_LOG" \
-            && print_msg "success" "Certificats SSL générés" \
-            || print_msg "warning" "Génération SSL échouée (HTTPS indisponible, non bloquant)"
+        # generate_ssl.sh exige root et écrit les certificats en root:root 600 ;
+        # le proxy tourne sous $SERVICE_USER et doit pouvoir lire la clé, sinon
+        # il plante en sélectionnant HTTPS. On lui en redonne la propriété.
+        if sudo bash "$SSL_SCRIPT" 2>>"$ERROR_LOG"; then
+            sudo chown -R "$SERVICE_USER:$SERVICE_GROUP" "$INSTALL_DIR/ssl" 2>>"$ERROR_LOG" || true
+            print_msg "success" "Certificats SSL générés (propriété : $SERVICE_USER)"
+        else
+            print_msg "warning" "Génération SSL échouée (HTTPS indisponible, non bloquant)"
+        fi
     fi
 fi
 
@@ -470,7 +548,6 @@ done
 
 if [ -n "$BACKEND_SCRIPT" ] && command -v systemctl &>/dev/null; then
     PROJECT_DIR="$(dirname "$(dirname "$BACKEND_SCRIPT")")"
-    SERVICE_USER="${USER:-root}"
     PROXY_SCRIPT="$(dirname "$BACKEND_SCRIPT")/llmui_proxy.py"
 
     # --- llmui-core : API FastAPI interne (127.0.0.1:$APP_PORT, C-06) ---
@@ -495,6 +572,12 @@ StandardError=journal
 [Install]
 WantedBy=multi-user.target
 SERVICEEOF
+
+    # Libère APP_PORT avant (re)démarrage : des sous-processus uvicorn peuvent
+    # rester liés au port après un crash du service (STANDARDS.md §8).
+    sudo systemctl stop llmui-core 2>/dev/null || true
+    sudo fuser -k "${APP_PORT}/tcp" 2>/dev/null || true
+    sleep 1
 
     if sudo systemctl daemon-reload 2>>"$ERROR_LOG" \
         && sudo systemctl enable llmui-core 2>>"$ERROR_LOG" \
@@ -537,6 +620,11 @@ StandardError=journal
 WantedBy=multi-user.target
 SERVICEEOF
 
+        # Libère les ports publics du proxy (8000/8443) avant (re)démarrage.
+        sudo systemctl stop llmui-proxy 2>/dev/null || true
+        sudo fuser -k 8000/tcp 8443/tcp 2>/dev/null || true
+        sleep 1
+
         if sudo systemctl daemon-reload 2>>"$ERROR_LOG" \
             && sudo systemctl enable llmui-proxy 2>>"$ERROR_LOG" \
             && sudo systemctl restart llmui-proxy 2>>"$ERROR_LOG"; then
@@ -572,7 +660,7 @@ wait_for_continue
 # ============================================================================
 # ÉTAPE 8 — PARE-FEU (UFW)
 # ============================================================================
-print_msg "step" "Étape 8/8 : Configuration du pare-feu (ufw)"
+print_msg "step" "Étape 8/8 : Pare-feu (ufw) & fail2ban"
 echo ""
 
 if command -v ufw &>/dev/null; then
@@ -604,6 +692,33 @@ if command -v ufw &>/dev/null; then
     fi
 else
     print_msg "warning" "ufw absent — installez-le pour activer le pare-feu (postInstallScripts/README.md)"
+fi
+
+# --- fail2ban (STANDARDS.md §1 — obligatoire sur les serveurs exposés) ---
+echo ""
+print_msg "info" "Configuration de fail2ban (protection SSH / force-brute)..."
+if command -v fail2ban-client &>/dev/null; then
+    sudo systemctl enable --now fail2ban 2>>"$ERROR_LOG" || true
+    print_msg "success" "fail2ban déjà présent — activé"
+elif [ -n "$PKG_INSTALL" ]; then
+    if $PKG_INSTALL fail2ban 2>>"$ERROR_LOG"; then
+        # Jail SSH minimale (STANDARDS.md §1) ; les jails Nginx/auth se règlent
+        # ensuite côté serveur Nginx (voir postInstallScripts/).
+        sudo tee /etc/fail2ban/jail.local > /dev/null << 'F2BEOF'
+[sshd]
+enabled  = true
+maxretry = 5
+findtime = 10m
+bantime  = 1h
+F2BEOF
+        sudo systemctl enable --now fail2ban 2>>"$ERROR_LOG" \
+            && print_msg "success" "fail2ban installé et activé (jail sshd)" \
+            || print_msg "warning" "fail2ban installé mais non démarré"
+    else
+        print_msg "warning" "Échec installation fail2ban — installez-le manuellement"
+    fi
+else
+    print_msg "warning" "fail2ban absent — installez-le pour la protection anti force-brute"
 fi
 
 # ============================================================================
