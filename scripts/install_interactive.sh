@@ -522,6 +522,24 @@ if command -v psql &>/dev/null; then
                     && print_msg "success" "Base de données llmui_core configurée (mot de passe synchronisé avec $ENV_FILE)" \
                     || print_msg "warning" "Erreur lors de la configuration — vérifiez $ERROR_LOG (script idempotent)"
                 rm -f "$TMP_SQL"
+
+                # Alembic : les tables viennent d'être créées par create_database.sql,
+                # on marque donc la révision de référence comme appliquée ("stamp")
+                # sans la rejouer. Les évolutions futures du schéma passent ensuite
+                # par `alembic upgrade head` (STANDARDS.md §2).
+                ALEMBIC_INI=""
+                for cand in "$SCRIPT_DIR/../alembic.ini" "$INSTALL_DIR/alembic.ini"; do
+                    [ -f "$cand" ] && ALEMBIC_INI="$(realpath "$cand")" && break
+                done
+                if [ -n "$ALEMBIC_INI" ] && [ -x "$VENV_DIR/bin/alembic" ]; then
+                    if (cd "$(dirname "$ALEMBIC_INI")" \
+                        && DATABASE_URL="postgresql+asyncpg://llmui_user:${DB_PASS}@localhost:5432/llmui_core" \
+                           "$VENV_DIR/bin/alembic" stamp head) 2>>"$ERROR_LOG"; then
+                        print_msg "success" "Alembic synchronisé (révision de référence marquée)"
+                    else
+                        print_msg "warning" "Alembic stamp échoué (non bloquant) — voir $ERROR_LOG"
+                    fi
+                fi
             fi
         else
             print_msg "warning" "create_database.sql introuvable — créez la DB manuellement (postInstallScripts/README.md)"
