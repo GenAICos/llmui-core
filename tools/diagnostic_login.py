@@ -150,7 +150,7 @@ def suggest_fixes():
 
 def main():
     print("╔══════════════════════════════════════════════════════════════╗")
-    print("║         DIAGNOSTIC LOGIN - LLMUI CORE v0.5.0                ║")
+    print("║         DIAGNOSTIC LOGIN - LLMUI CORE v1.0.0                ║")
     print("╚══════════════════════════════════════════════════════════════╝\n")
     
     # Vérifier la base

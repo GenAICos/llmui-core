@@ -1,4 +1,4 @@
-# Architecture Technique - LLMUI Core v0.5
+# Architecture Technique - LLMUI Core v1.0.0
 
 **Francois Chalut**
 

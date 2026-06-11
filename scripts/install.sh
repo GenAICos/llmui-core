@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# LLMUI Core - Installation Script v0.5.0 - CORRIGÉ
+# LLMUI Core - Installation Script v1.0.0
 # ==============================================================================
 # Installation automatisée de LLMUI Core avec authentification
 # Base de données SYNCHRONISÉE avec llmui_backend.py
@@ -215,7 +215,7 @@ initialize_database() {
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Script d'initialisation de la base de données - v0.5.0 CORRIGÉ
+Script d'initialisation de la base de données - v1.0.0
 SCHÉMA SYNCHRONISÉ avec llmui_backend.py et andy_installer.py
 """
 import sqlite3
@@ -354,7 +354,7 @@ def create_schema(conn):
 
 
 def create_admin_user(conn, username, password):
-    """Crée l'utilisateur administrateur - v0.5.0 CORRIGÉ"""
+    """Crée l'utilisateur administrateur - v1.0.0"""
     cursor = conn.cursor()
     
     # Vérifier si l'utilisateur existe déjà
@@ -580,7 +580,7 @@ main() {
     clear
     
     echo "═══════════════════════════════════════════════════════════════"
-    echo "  LLMUI Core - Installation Script v0.5.0"
+    echo "  LLMUI Core - Installation Script v1.0.0"
     echo "═══════════════════════════════════════════════════════════════"
     echo ""
     

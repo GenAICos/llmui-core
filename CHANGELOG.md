@@ -7,13 +7,53 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ---
 
+## [1.0.0] - 2026-06-09
+
+### 🎉 Première version stable — Technologies Nexios TF Inc.
+
+Mise en conformité complète avec STANDARDS.md v1.7.0. Cette version marque la
+maturité de LLMUI Core comme produit Nexios TF.
+
+### ✨ Ajouté
+
+#### Identité visuelle
+- Logo header : `Icon-Only-White.png` (fond dégradé cyan → bleu) remplace le "L"
+- Widget support Andy avec `andyLogo.png` comme avatar
+
+#### Widget Andy Support
+- `web/andy.js` : Widget flottant de support IA (Ollama local)
+- `web/andy.css` : Styles du widget (dark/light theme, responsive mobile)
+- Bouton flottant bottom-right sur toutes les pages
+- Indicateur "Andy réfléchit..." animé pendant la génération
+- Option "Parler à un humain" toujours visible
+- Historique de session conservé en mémoire
+- Endpoint `POST /api/support/chat` dans le backend FastAPI
+
+#### Fichiers obligatoires (STANDARDS.md §8, §12, §14)
+- `CLAUDE.md` : Contexte complet du projet pour Claude Code
+- `.env.example` : Template minimal (DATABASE_URL, APP_PORT, APP_ENV uniquement)
+- `postInstallScripts/nginx_vhost.conf` : Vhost Nginx prêt à déployer (HTTPS + headers sécurité)
+- `postInstallScripts/create_database.sql` : Création DB PostgreSQL idempotente (user, DB, permissions, tables initiales, system_config seed)
+- `postInstallScripts/README.md` : Instructions d'utilisation des scripts post-install
+
+### 🔧 Modifié
+
+- Header logo : `<div class="logo-icon">L</div>` → `<img>` utilisant `Icon-Only-White.png`
+- `web/layout.css` : `.logo-icon` adapté pour contenir une image (overflow:hidden, padding)
+- Backend version : `0.5.0` → `1.0.0`
+
+### 📚 Documentation
+- `CLAUDE.md` créé : stack, commandes, architecture, standards, endpoints API
+
+---
+
 ## [Non publié]
 
 ### À venir
-- Support de modèles LLM additionnels (Claude, GPT-4, etc.)
-- Interface de configuration graphique
-- API WebSocket améliorée
-- Système de plugins
+- Panneau `/zadmin` complet (utilisateurs, rôles, config système, audit log)
+- TOTP obligatoire pour les admins
+- Migration SQLite → PostgreSQL complète
+- Système de mémoire RAG amélioré
 
 ---
 

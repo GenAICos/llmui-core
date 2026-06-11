@@ -29,34 +29,9 @@ class FallbackManager {
 
         const warning = document.createElement('div');
         warning.id = 'offline-warning';
-        warning.innerHTML = `
-            <div style="
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                background: #f59e0b;
-                color: white;
-                padding: 0.5rem;
-                text-align: center;
-                font-weight: bold;
-                z-index: 10000;
-                animation: slideDown 0.3s ease;
-            ">
-                ⚠️ Mode hors ligne - Le serveur ne répond pas
-            </div>
-        `;
+        warning.className = 'offline-warning';
+        warning.textContent = '⚠️ Mode hors ligne - Le serveur ne répond pas';
         document.body.appendChild(warning);
-
-        // Ajouter l'animation CSS
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes slideDown {
-                from { transform: translateY(-100%); }
-                to { transform: translateY(0); }
-            }
-        `;
-        document.head.appendChild(style);
     }
 
     hideOfflineWarning() {

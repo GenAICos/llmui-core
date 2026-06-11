@@ -1,92 +1,75 @@
 #!/usr/bin/env python3
-"""
-==============================================================================
-Test Login - Vérifie le système de login
-==============================================================================
+# -*- coding: utf-8 -*-
+# Copyright © Technologies Nexios TF Inc. — nexiostf.com
+"""Outil de diagnostic — vérifie les identifiants d'un compte LLMUI Core (C-07).
+
+Compare le mot de passe saisi (via `getpass`, jamais en argument de ligne
+de commande — visible dans `ps aux` et l'historique shell) au hash Argon2
+stocké en PostgreSQL pour le courriel donné.
+
+Usage :
+    python3 tools/test_login.py <courriel>
 """
 
-import sqlite3
-import hashlib
+import asyncio
+import getpass
+import os
 import sys
 
-DB_PATH = "/var/lib/llmui/llmui.db"
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-def test_login(username, password):
-    """Teste le login avec username/password"""
-    print(f"\n=== TEST DE LOGIN ===")
-    print(f"Username: {username}")
-    print(f"Password: {password}")
-    
-    # Calculer le hash
-    password_hash = hashlib.sha256(password.encode()).hexdigest()
-    print(f"Hash calculé: {password_hash}")
-    
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        # Vérifier si l'utilisateur existe
-        cursor.execute("SELECT id, username, password_hash, is_admin FROM users WHERE username = ?", (username,))
-        user = cursor.fetchone()
-        
-        if not user:
-            print(f"\n❌ Utilisateur '{username}' introuvable dans la base")
-            return False
-        
-        print(f"\nUtilisateur trouvé:")
-        print(f"  ID: {user[0]}")
-        print(f"  Username: {user[1]}")
-        print(f"  Hash stocké: {user[2]}")
-        print(f"  Is admin: {user[3]}")
-        
-        # Comparer les hash
-        if user[2] == password_hash:
-            print(f"\n✓ LOGIN RÉUSSI!")
-            print(f"  Les hash correspondent")
-            return True
-        else:
-            print(f"\n❌ LOGIN ÉCHOUÉ!")
-            print(f"  Hash stocké:  {user[2]}")
-            print(f"  Hash calculé: {password_hash}")
-            print(f"  Les hash ne correspondent pas")
-            return False
-        
-        conn.close()
-        
-    except Exception as e:
-        print(f"\n❌ Erreur: {e}")
+from sqlalchemy import func, select  # noqa: E402
+
+import security  # noqa: E402
+from db_models import User, async_session_factory, engine  # noqa: E402
+
+
+async def list_users() -> None:
+    async with async_session_factory() as session:
+        result = await session.execute(select(User).order_by(User.email))
+        users = result.scalars().all()
+
+    print("\n=== UTILISATEURS ===")
+    if not users:
+        print("Aucun utilisateur trouvé")
+        return
+    for user in users:
+        print(f"  - {user.email} (admin={user.is_admin}, actif={user.is_active}, créé={user.created_at})")
+
+
+async def test_login(email: str, password: str) -> bool:
+    async with async_session_factory() as session:
+        result = await session.execute(select(User).where(func.lower(User.email) == email.lower()))
+        user = result.scalar_one_or_none()
+
+    if user is None:
+        print(f"\n❌ Utilisateur '{email}' introuvable")
         return False
 
-def list_users():
-    """Liste tous les utilisateurs"""
+    print(f"\nUtilisateur trouvé : {user.email} (id={user.id}, admin={user.is_admin}, actif={user.is_active})")
+
+    if security.verify_password(password, user.password_hash):
+        print("\n✓ Mot de passe valide (Argon2)")
+        return True
+
+    print("\n❌ Mot de passe invalide")
+    return False
+
+
+async def main() -> None:
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        cursor.execute("SELECT id, username, is_admin, created_at FROM users")
-        users = cursor.fetchall()
-        
-        print(f"\n=== UTILISATEURS DANS LA BASE ===")
-        if not users:
-            print("Aucun utilisateur trouvé")
-        else:
-            for user in users:
-                print(f"  - {user[1]} (admin={user[2]}, created={user[3]})")
-        
-        conn.close()
-        
-    except Exception as e:
-        print(f"❌ Erreur: {e}")
+        await list_users()
+
+        if len(sys.argv) < 2:
+            print("\nUsage : python3 tools/test_login.py <courriel>")
+            return
+
+        email = sys.argv[1]
+        password = getpass.getpass("\nMot de passe à vérifier : ")
+        await test_login(email, password)
+    finally:
+        await engine.dispose()
+
 
 if __name__ == "__main__":
-    # Lister les utilisateurs
-    list_users()
-    
-    # Tester le login
-    if len(sys.argv) >= 3:
-        username = sys.argv[1]
-        password = sys.argv[2]
-        test_login(username, password)
-    else:
-        print("\nUsage: python3 test_login.py <username> <password>")
-        print("Exemple: python3 test_login.py admin monmotdepasse")
+    asyncio.run(main())

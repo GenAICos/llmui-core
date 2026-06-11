@@ -1,0 +1,463 @@
+/*
+ * Copyright © Technologies Nexios TF Inc. — nexiostf.com
+ * LLMUI Core v1.0.0 - Andy Support Widget Styles
+ * Author: François Chalut
+ */
+
+/* ============================================================================
+   ANDY WIDGET CONTAINER
+   ============================================================================ */
+.andy-widget {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 9999;
+    font-family: inherit;
+}
+
+/* ============================================================================
+   TOGGLE BUTTON
+   ============================================================================ */
+.andy-toggle-btn {
+    width: 62px;
+    height: 62px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    background: linear-gradient(135deg, #06b6d4, #3b82f6);
+    box-shadow: 0 4px 20px rgba(6, 182, 212, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    padding: 0;
+    position: relative;
+}
+
+.andy-toggle-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 8px 28px rgba(6, 182, 212, 0.7);
+}
+
+.andy-toggle-btn:active {
+    transform: scale(0.95);
+}
+
+.andy-btn-avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+/* Notification badge */
+.andy-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 18px;
+    height: 18px;
+    background: var(--error, #ef4444);
+    border-radius: 50%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: white;
+    border: 2px solid var(--bg-main, #0f172a);
+}
+
+.andy-badge.visible {
+    display: flex;
+}
+
+/* ============================================================================
+   CHAT PANEL
+   ============================================================================ */
+.andy-chat-panel {
+    position: absolute;
+    bottom: 76px;
+    right: 0;
+    width: 360px;
+    background: var(--bg-panel, #1e293b);
+    border: 1px solid var(--border-cyan, rgba(6, 182, 212, 0.3));
+    border-radius: 16px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(6, 182, 212, 0.1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transform: scale(0.9) translateY(12px);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: bottom right;
+}
+
+.andy-chat-panel.open {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+    pointer-events: all;
+}
+
+/* ============================================================================
+   HEADER
+   ============================================================================ */
+.andy-chat-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.875rem 1rem;
+    background: var(--bg-card, #334155);
+    border-bottom: 1px solid var(--border, rgba(148, 163, 184, 0.2));
+    flex-shrink: 0;
+}
+
+.andy-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.andy-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--cyan, #06b6d4);
+    box-shadow: 0 0 8px rgba(6, 182, 212, 0.3);
+}
+
+.andy-header-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.andy-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text-primary, #f1f5f9);
+}
+
+.andy-status-text {
+    font-size: 0.72rem;
+    color: var(--success, #10b981);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.andy-status-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--success, #10b981);
+    border-radius: 50%;
+    display: inline-block;
+    animation: andyPulse 2s infinite;
+}
+
+@keyframes andyPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.8); }
+}
+
+.andy-header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.andy-escalate-btn,
+.andy-close-btn {
+    background: none;
+    border: 1px solid var(--border, rgba(148, 163, 184, 0.2));
+    border-radius: 8px;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-primary, #f1f5f9);
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+}
+
+.andy-escalate-btn:hover {
+    background: rgba(245, 158, 11, 0.15);
+    border-color: var(--warning, #f59e0b);
+    color: var(--warning, #f59e0b);
+}
+
+.andy-close-btn {
+    font-size: 1.15rem;
+    font-weight: 600;
+}
+
+.andy-close-btn:hover {
+    background: var(--bg-hover, #475569);
+    border-color: var(--cyan, #06b6d4);
+}
+
+/* ============================================================================
+   MESSAGES AREA
+   ============================================================================ */
+.andy-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.875rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-height: 220px;
+    max-height: 290px;
+}
+
+.andy-messages::-webkit-scrollbar {
+    width: 3px;
+}
+
+.andy-messages::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.andy-messages::-webkit-scrollbar-thumb {
+    background: var(--border, rgba(148, 163, 184, 0.2));
+    border-radius: 2px;
+}
+
+/* Message Rows */
+.andy-message {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-end;
+    animation: andyFadeIn 0.25s ease forwards;
+}
+
+@keyframes andyFadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.andy-message.andy-from-user {
+    flex-direction: row-reverse;
+}
+
+.andy-msg-avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    margin-bottom: 2px;
+}
+
+.andy-msg-bubble {
+    max-width: 78%;
+    padding: 0.55rem 0.875rem;
+    border-radius: 14px;
+    font-size: 0.85rem;
+    line-height: 1.55;
+}
+
+.andy-from-andy .andy-msg-bubble {
+    background: var(--bg-card, #334155);
+    color: var(--text-primary, #f1f5f9);
+    border-bottom-left-radius: 4px;
+}
+
+.andy-from-user .andy-msg-bubble {
+    background: linear-gradient(135deg, #06b6d4, #3b82f6);
+    color: white;
+    border-bottom-right-radius: 4px;
+}
+
+.andy-msg-bubble p {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* ============================================================================
+   THINKING INDICATOR
+   ============================================================================ */
+.andy-thinking {
+    padding: 0.375rem 0.875rem;
+    font-size: 0.78rem;
+    color: var(--text-muted, #64748b);
+    display: none;
+    align-items: center;
+    gap: 0.375rem;
+    flex-shrink: 0;
+}
+
+.andy-thinking.visible {
+    display: flex;
+}
+
+.andy-thinking-dots {
+    display: inline-flex;
+    gap: 3px;
+}
+
+.andy-thinking-dots span {
+    width: 5px;
+    height: 5px;
+    background: var(--cyan, #06b6d4);
+    border-radius: 50%;
+    animation: andyBounce 1.2s infinite ease-in-out;
+}
+
+.andy-thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+.andy-thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes andyBounce {
+    0%, 80%, 100% { transform: scale(0.7); opacity: 0.5; }
+    40% { transform: scale(1); opacity: 1; }
+}
+
+/* ============================================================================
+   INPUT AREA
+   ============================================================================ */
+.andy-input-area {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border-top: 1px solid var(--border, rgba(148, 163, 184, 0.2));
+    flex-shrink: 0;
+}
+
+.andy-input {
+    flex: 1;
+    background: var(--bg-input, #1e293b);
+    border: 1px solid var(--border, rgba(148, 163, 184, 0.2));
+    border-radius: 10px;
+    padding: 0.5rem 0.75rem;
+    color: var(--text-primary, #f1f5f9);
+    font-size: 0.85rem;
+    resize: none;
+    outline: none;
+    font-family: inherit;
+    line-height: 1.5;
+    max-height: 80px;
+    overflow-y: auto;
+    transition: border-color 0.2s ease;
+}
+
+.andy-input:focus {
+    border-color: var(--border-focus, rgba(6, 182, 212, 0.6));
+}
+
+.andy-input::placeholder {
+    color: var(--text-muted, #64748b);
+}
+
+.andy-input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.andy-send-btn {
+    width: 34px;
+    height: 34px;
+    background: linear-gradient(135deg, #06b6d4, #3b82f6);
+    border: none;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: white;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.andy-send-btn:hover:not(:disabled) {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(6, 182, 212, 0.5);
+}
+
+.andy-send-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ============================================================================
+   FOOTER — PARLER À UN HUMAIN
+   ============================================================================ */
+.andy-footer {
+    padding: 0.5rem 0.75rem 0.75rem;
+    flex-shrink: 0;
+}
+
+.andy-human-btn {
+    width: 100%;
+    padding: 0.45rem;
+    background: none;
+    border: 1px solid var(--border, rgba(148, 163, 184, 0.2));
+    border-radius: 8px;
+    color: var(--text-muted, #64748b);
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    font-family: inherit;
+}
+
+.andy-human-btn:hover:not(:disabled) {
+    border-color: var(--warning, #f59e0b);
+    color: var(--warning, #f59e0b);
+    background: rgba(245, 158, 11, 0.08);
+}
+
+.andy-human-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* ============================================================================
+   RESPONSIVE — MOBILE
+   ============================================================================ */
+@media (max-width: 480px) {
+    .andy-widget {
+        bottom: 1rem;
+        right: 1rem;
+    }
+
+    .andy-chat-panel {
+        width: calc(100vw - 2rem);
+        right: -1rem;
+    }
+}
+
+/* ============================================================================
+   LIGHT THEME OVERRIDES
+   ============================================================================ */
+body.light-theme .andy-chat-panel {
+    background: var(--bg-panel);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+}
+
+body.light-theme .andy-chat-header {
+    background: var(--bg-card);
+}
+
+body.light-theme .andy-from-andy .andy-msg-bubble {
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+body.light-theme .andy-input {
+    background: var(--bg-input);
+    color: var(--text-primary);
+}
+
+body.light-theme .andy-badge {
+    border-color: var(--bg-main);
+}

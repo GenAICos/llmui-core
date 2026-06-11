@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Créateur et gestionnaire de base de connaissances pour Andy
-Version 0.5
+Version 1.0.0
 """
 
 import json
@@ -11,7 +11,7 @@ from datetime import datetime
 
 # Base de connaissances initiale enrichie
 INITIAL_KNOWLEDGE = {
-    "version": "0.5",
+    "version": "1.0.0",
     "created_at": datetime.now().isoformat(),
     "last_updated": datetime.now().isoformat(),
     
@@ -296,7 +296,7 @@ INITIAL_KNOWLEDGE = {
     "metadata": {
         "author": "Andy AI Assistant",
         "project": "LLMUI",
-        "version": "0.5",
+        "version": "1.0.0",
         "license": "MIT"
     }
 }
@@ -391,7 +391,7 @@ def main():
     """Point d'entrée principal"""
     
     print("╔════════════════════════════════════════════════════════╗")
-    print("║    Gestionnaire de Base de Connaissances Andy v0.5    ║")
+    print("║    Gestionnaire de Base de Connaissances Andy v1.0.0    ║")
     print("╚════════════════════════════════════════════════════════╝")
     print()
     

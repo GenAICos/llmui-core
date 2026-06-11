@@ -1,7 +1,7 @@
-# Documentation API REST - LLMUI Core v0.5.0
+# Documentation API REST - LLMUI Core v1.0.0
 
 **Base URL**: `http://localhost:5000` (ou votre domaine)  
-**Version**: 0.5.0
+**Version**: 1.0.0
 **Authentification**: JWT Bearer Token
 
 ---
@@ -1011,5 +1011,5 @@ console.log(response.response);
 **Francois Chalut**  
 *API REST pour la souveraineté numérique* 🇨🇦
 
-**Version**: 0.5.0  
+**Version**: 1.0.0  
 **Dernière mise à jour**: 2025-11-21
