@@ -7,25 +7,24 @@ Guide ultra-rapide pour installer et utiliser LLMUI Core en moins de 15 minutes.
 ## ⚡ Installation express
 
 ### Prérequis
-- Serveur Linux (Debian/Ubuntu/Rocky/RHEL)
-- Python 3.8+
+- Serveur Linux (Debian 13 / Ubuntu 24.04 / Zorin OS 18)
+- Python 3.11+
 - Accès root (sudo)
 - 8GB RAM minimum
 - 20GB disque libre
 
-### 3 commandes pour tout installer
+### Installation automatisée
 
 ```bash
 # 1. Cloner le dépôt
-git clone https://github.com/votre-repo/llmui-core.git && cd llmui-core
+git clone https://github.com/GenAICos/llmui-core.git && cd llmui-core
 
-# 2. Lancer l'installation interactive
-sudo bash andy_setup.sh
-
-# 3. Choisir option [1] - Installation complète
+# 2. Lancer l'installateur interactif
+#    (prérequis, PostgreSQL, services systemd, pare-feu)
+sudo ./scripts/install_interactive.sh
 ```
 
-**C'est tout!** Andy s'occupe du reste. ☕
+**C'est tout !** ☕
 
 ---
 
@@ -84,19 +83,14 @@ Ouvrez cette URL dans votre navigateur!
 ### Vérifier l'état
 
 ```bash
-# Via Andy
-sudo bash andy_setup.sh
-# Choisir option [5] - Vérifier l'installation
-
-# Ou manuellement
-sudo systemctl status llmui-backend llmui-proxy nginx
+sudo systemctl status llmui-core llmui-proxy nginx
 ```
 
 ### Consulter les logs
 
 ```bash
 # Backend
-sudo journalctl -u llmui-backend -f
+sudo journalctl -u llmui-core -f
 
 # Proxy
 sudo journalctl -u llmui-proxy -f
@@ -108,7 +102,7 @@ sudo tail -f /var/log/nginx/llmui-access.log
 ### Redémarrer les services
 
 ```bash
-sudo systemctl restart llmui-backend llmui-proxy nginx
+sudo systemctl restart llmui-core llmui-proxy nginx
 ```
 
 ---
@@ -118,19 +112,19 @@ sudo systemctl restart llmui-backend llmui-proxy nginx
 ### Health check
 
 ```bash
-curl http://localhost:5000/api/health
+curl http://localhost:8004/health
 ```
 
 ### Liste des modèles
 
 ```bash
-curl http://localhost:5000/api/models
+curl http://localhost:8004/api/models
 ```
 
 ### Envoyer un message
 
 ```bash
-curl -X POST http://localhost:5000/api/chat \
+curl -X POST http://localhost:8004/api/chat \
   -H "Content-Type: application/json" \
   -d '{
     "message": "Bonjour!",
@@ -142,29 +136,23 @@ curl -X POST http://localhost:5000/api/chat \
 
 ## 🔧 Configuration rapide
 
-### Fichier principal
+LLMUI Core se configure via **`/zadmin`** (table `system_config` en PostgreSQL),
+jamais via un fichier de configuration (STANDARDS.md §2/§5). Seules 3 variables
+de démarrage vivent dans `.env` : `DATABASE_URL`, `APP_PORT`, `APP_ENV`.
 
-Éditez `/opt/llmui-core/config.yaml`:
-
-```yaml
-server:
-  port: 5000
-  
-ollama:
-  models:
-    workers:
-      - "phi3:3.8b"
-      - "gemma2:2b"
-    merger: "granite4:micro-h"
-
-# Redémarrer après modification
-```
+### Changer le port de l'application
 
 ```bash
-sudo systemctl restart llmui-backend llmui-proxy
+sudo nano /opt/llmui-core/.env        # APP_PORT=8004
+sudo systemctl restart llmui-core llmui-proxy
 ```
 
-### Ajouter SSL (optionnel)
+### Modèles, Andy, sécurité, CORS…
+
+Tout se règle dans **`/zadmin` → Configuration système**.
+Voir [`docs/CONFIGURATION.md`](CONFIGURATION.md) pour la liste complète.
+
+### Ajouter SSL (production)
 
 ```bash
 sudo certbot --nginx -d votre-domaine.com
@@ -178,13 +166,13 @@ sudo certbot --nginx -d votre-domaine.com
 
 ```bash
 # Vérifier les logs
-sudo journalctl -u llmui-backend -n 50
+sudo journalctl -u llmui-core -n 50
 
 # Vérifier les permissions
 ls -la /opt/llmui-core/
 
 # Redémarrer
-sudo systemctl restart llmui-backend llmui-proxy
+sudo systemctl restart llmui-core llmui-proxy
 ```
 
 ### Page blanche dans le navigateur
@@ -195,7 +183,7 @@ sudo systemctl status nginx
 sudo nginx -t
 
 # Vérifier le backend
-curl http://localhost:5000/api/health
+curl http://localhost:8004/health
 ```
 
 ### Ollama ne répond pas
@@ -246,7 +234,7 @@ ollama run phi3:3.8b "test"
 ```python
 import requests
 
-response = requests.post('http://localhost:5000/api/chat', json={
+response = requests.post('http://localhost:8004/api/chat', json={
     "message": "Explique-moi l'intelligence artificielle",
     "user_id": "user123"
 })
@@ -264,7 +252,7 @@ data = {
 }
 
 response = requests.post(
-    'http://localhost:5000/api/upload',
+    'http://localhost:8004/api/upload',
     files=files,
     data=data
 )
@@ -276,14 +264,14 @@ print(response.json()['summary'])
 
 ```python
 # Premier message
-response1 = requests.post('http://localhost:5000/api/chat', json={
+response1 = requests.post('http://localhost:8004/api/chat', json={
     "message": "Mon prénom est François",
     "user_id": "user123",
     "conversation_id": "conv_001"
 })
 
 # Message avec contexte
-response2 = requests.post('http://localhost:5000/api/chat', json={
+response2 = requests.post('http://localhost:8004/api/chat', json={
     "message": "Quel est mon prénom?",
     "user_id": "user123",
     "conversation_id": "conv_001"
@@ -296,45 +284,27 @@ print(response2.json()['response'])  # "François"
 
 ## ⚙️ Configuration par cas d'usage
 
-### Serveur de développement
+> La configuration vit dans `.env` (3 variables) + `/zadmin` (table
+> `system_config`). Voir [`docs/CONFIGURATION.md`](CONFIGURATION.md).
 
-```yaml
-# config.yaml
-server:
-  debug: true
-  
-logging:
-  level: "DEBUG"
+### Développement
+
+```bash
+# /opt/llmui-core/.env
+APP_ENV=development        # logs plus verbeux
 ```
 
 ### Production
 
-```yaml
-# config.yaml
-server:
-  ssl_enabled: true
-  ssl_cert: "/opt/llmui-core/ssl/cert.pem"
-  ssl_key: "/opt/llmui-core/ssl/key.pem"
-  
-security:
-  max_login_attempts: 5
-  lockout_duration: 900
-  
-logging:
-  level: "INFO"
-```
+- `.env` : `APP_ENV=production`
+- TLS : Let's Encrypt + Nginx (`postInstallScripts/nginx_vhost.conf`)
+- Sécurité via `/zadmin` → Sécurité : `max_login_attempts`, `lockout_minutes`,
+  `totp_required_admin`, `cors_allowed_origins`
 
-### Performance maximale
+### Performance
 
-```yaml
-# config.yaml
-ollama:
-  timeout: 120  # Réduire pour réponses plus rapides
-  
-memory:
-  type: "short_term"  # Désactiver RAG pour vitesse
-  max_tokens: 2048
-```
+- Modèles workers/merger et timeouts : `/zadmin`, ou les constantes
+  `DEFAULT_WORKER_MODELS` / `TIMEOUT_CONFIG` de `src/llmui_backend.py`
 
 ---
 
@@ -394,7 +364,7 @@ sudo journalctl --vacuum-time=7d
 # Mise à jour
 cd /path/to/llmui-core && git pull
 sudo python3 andy_deploy_source.py
-sudo systemctl restart llmui-backend llmui-proxy
+sudo systemctl restart llmui-core llmui-proxy
 ```
 
 ---
@@ -410,7 +380,7 @@ sudo systemctl restart llmui-backend llmui-proxy
 
 ### Avant de demander de l'aide
 
-1. Consultez les logs: `sudo journalctl -u llmui-backend -n 100`
+1. Consultez les logs: `sudo journalctl -u llmui-core -n 100`
 2. Vérifiez la documentation: README.md et INSTALL.md
 3. Recherchez dans les issues existantes
 4. Préparez les informations système:
@@ -418,7 +388,7 @@ sudo systemctl restart llmui-backend llmui-proxy
    uname -a
    python3 --version
    ollama --version
-   systemctl status llmui-backend llmui-proxy nginx
+   systemctl status llmui-core llmui-proxy nginx
    ```
 
 ---

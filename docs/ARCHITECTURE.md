@@ -36,7 +36,7 @@ Prompt → Workers (phi3, gemma2) → Analyses → Merger (granite4) → Consens
                              │
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                  LLMUI PROXY (Port 8080)                         │
+│                  LLMUI PROXY (Port 8000)                         │
 │  • Authentification JWT                                          │
 │  • Gestion des sessions                                          │
 │  • Rate limiting                                                 │
@@ -45,13 +45,13 @@ Prompt → Workers (phi3, gemma2) → Analyses → Merger (granite4) → Consens
                              │
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                 LLMUI BACKEND (Port 5000)                        │
+│                 LLMUI BACKEND (Port 8004)                        │
 │  • API REST FastAPI                                              │
 │  • Orchestration LLM                                             │
 │  • Système de consensus                                          │
 │  • Gestion mémoire (court/long terme, RAG)                      │
 │  • Traitement de fichiers                                        │
-│  • Base de données SQLite                                        │
+│  • Persistance PostgreSQL                                        │
 └────────────────────────────┬────────────────────────────────────┘
                              │
                              ▼
@@ -122,7 +122,7 @@ web/
 - Headers de sécurité
 
 # Sessions
-- Stockage session (SQLite)
+- Sessions signées (cookies)
 - Timeout automatique
 - Multi-sessions par utilisateur
 ```
@@ -146,7 +146,7 @@ sessions
 
 ### 3. Backend (llmui_backend.py)
 
-**Technologie**: FastAPI, Uvicorn, aiosqlite
+**Technologie**: FastAPI, Uvicorn, asyncpg
 
 **Architecture interne**:
 ```python
@@ -166,7 +166,7 @@ llmui_backend.py
 
 ```python
 # Health & Info
-GET  /api/health          # Statut système
+GET  /health          # Statut système
 GET  /api/models          # Liste modèles Ollama
 GET  /api/stats           # Statistiques utilisation
 
@@ -238,7 +238,7 @@ def consensus_chat(prompt: str) -> str:
 class MemoryManager:
     def __init__(self):
         self.short_term = {}      # Contexte conversation
-        self.long_term = SQLite   # Historique persistant
+        self.long_term = PostgreSQL # Historique persistant
         self.rag = VectorDB       # Base vectorielle
         self.cache = LRUCache     # Cache réponses
 ```
@@ -258,7 +258,7 @@ class MemoryManager:
 }
 ```
 
-**Mémoire long terme (SQLite)**:
+**Mémoire long terme (PostgreSQL)**:
 ```sql
 conversations
 ├── id (PK)
@@ -420,11 +420,11 @@ class OllamaManager:
    ↓
 2. Frontend → POST /api/chat
    ↓
-3. Nginx → route vers Proxy:8080
+3. Nginx → route vers Proxy:8000
    ↓
 4. Proxy vérifie JWT token
    ↓
-5. Proxy → forward vers Backend:5000
+5. Proxy → forward vers Backend:8004
    ↓
 6. Backend récupère contexte (mémoire)
    ↓
@@ -652,7 +652,7 @@ add_header Content-Security-Policy "default-src 'self'" always;
 3. **Base de données**
    - Index sur colonnes fréquentes
    - Nettoyage automatique vieux messages
-   - Vacuum périodique SQLite
+   - VACUUM périodique PostgreSQL
 
 4. **Réseau**
    - Compression gzip Nginx
@@ -678,7 +678,7 @@ add_header Content-Security-Policy "default-src 'self'" always;
 /opt/llmui-core/logs/llmui.log
 
 # Services
-journalctl -u llmui-backend
+journalctl -u llmui-core
 journalctl -u llmui-proxy
 
 # Nginx
@@ -707,7 +707,8 @@ GET /api/stats
 
 ## 🔧 Configuration
 
-Voir `config.yaml.example` et `docs/CONFIGURATION.md` pour détails.
+Configuration via `.env` (3 variables) + `/zadmin` (table `system_config`).
+Voir `.env.example` et `docs/CONFIGURATION.md` pour détails.
 
 ---
 

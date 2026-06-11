@@ -28,7 +28,7 @@ LLMUI Core offre deux modes d'interaction avec des LLMs locaux :
 └──────┬──────┘
        │
 ┌──────▼──────────┐
-│ llmui-backend   │  ← API FastAPI (port 8004)
+│  llmui-core     │  ← API FastAPI (port 8004)
 │   (FastAPI)     │
 └──────┬──────────┘
        │
@@ -207,13 +207,13 @@ Documentation complète : [`docs/API.md`](docs/API.md)
 
 ```bash
 # Statut
-sudo systemctl status llmui-backend nginx
+sudo systemctl status llmui-core nginx
 
 # Logs en temps réel
-sudo journalctl -u llmui-backend -f
+sudo journalctl -u llmui-core -f
 
 # Redémarrer
-sudo systemctl restart llmui-backend
+sudo systemctl restart llmui-core
 ```
 
 ## Développement

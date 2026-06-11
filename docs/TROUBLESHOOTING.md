@@ -31,11 +31,11 @@ echo "=== DIAGNOSTIC LLMUI CORE ==="
 echo ""
 
 echo "1. Services systemd:"
-systemctl is-active llmui-backend llmui-proxy nginx ollama
+systemctl is-active llmui-core llmui-proxy nginx ollama
 
 echo ""
 echo "2. Ports en écoute:"
-ss -tlnp | grep -E '(5000|8080|80|11434)'
+ss -tlnp | grep -E '(8004|8000|80|11434)'
 
 echo ""
 echo "3. Processus:"
@@ -55,7 +55,7 @@ curl -I http://localhost/
 
 echo ""
 echo "7. Test API:"
-curl http://localhost:5000/api/health
+curl http://localhost:8004/health
 
 echo ""
 echo "8. Modèles Ollama:"
@@ -63,7 +63,7 @@ ollama list
 
 echo ""
 echo "9. Dernières erreurs backend:"
-journalctl -u llmui-backend -n 10 --no-pager
+journalctl -u llmui-core -n 10 --no-pager
 
 echo ""
 echo "10. Dernières erreurs Nginx:"
@@ -72,10 +72,10 @@ tail -5 /var/log/nginx/llmui-error.log
 
 ### Checklist rapide
 
-- [ ] Services actifs: `sudo systemctl status llmui-backend llmui-proxy nginx`
-- [ ] Ports ouverts: `sudo ss -tlnp | grep -E '(5000|8080|80)'`
+- [ ] Services actifs: `sudo systemctl status llmui-core llmui-proxy nginx`
+- [ ] Ports ouverts: `sudo ss -tlnp | grep -E '(8004|8000|80)'`
 - [ ] Ollama fonctionne: `ollama list`
-- [ ] Base de données accessible: `ls -la /opt/llmui-core/data/*.db`
+- [ ] PostgreSQL accessible: `pg_isready -h localhost`
 - [ ] Permissions correctes: `ls -la /opt/llmui-core/`
 - [ ] Espace disque: `df -h /opt/llmui-core`
 
@@ -83,22 +83,16 @@ tail -5 /var/log/nginx/llmui-error.log
 
 ## 🛠️ Problèmes d'installation
 
-### Andy échoue pendant l'installation
+### Base de connaissance d'Andy vide
 
-**Symptôme**: Le script `andy_installer.py` s'arrête avec une erreur.
+**Symptôme**: Andy ne connaît pas le projet / répond de façon générique.
 
 **Solution**:
 ```bash
-# 1. Consulter les logs Andy
-less /tmp/andy_install.log
-
-# 2. Consulter la base de données
-sqlite3 /tmp/andy_installation.db
-SELECT * FROM commands WHERE status='failed' ORDER BY timestamp DESC LIMIT 5;
-.quit
-
-# 3. Identifier l'étape problématique et relancer
-sudo python3 andy_installer.py
+# La connaissance d'Andy vit dans PostgreSQL (table andy_knowledge),
+# éditable via /zadmin → Support Andy. Vérifier son contenu :
+sudo -u postgres psql -d llmui_core -c \
+  "SELECT id, title, lang FROM andy_knowledge WHERE is_active;"
 ```
 
 **Causes fréquentes**:
@@ -172,15 +166,15 @@ ollama pull phi3:3.8b
 
 ### Backend ne démarre pas
 
-**Symptôme**: `sudo systemctl start llmui-backend` échoue
+**Symptôme**: `sudo systemctl start llmui-core` échoue
 
 **Diagnostic**:
 ```bash
 # Voir les erreurs
-sudo journalctl -u llmui-backend -n 50
+sudo journalctl -u llmui-core -n 50
 
 # Vérifier le fichier service
-cat /etc/systemd/system/llmui-backend.service
+cat /etc/systemd/system/llmui-core.service
 
 # Tester manuellement
 sudo su - llmui
@@ -208,16 +202,15 @@ OSError: [Errno 98] Address already in use
 
 **Solution**:
 ```bash
-# Identifier le processus
-sudo lsof -i :5000
+# Identifier le processus (APP_PORT, défaut 8004)
+sudo lsof -i :8004
 
 # Tuer le processus
 sudo kill -9 <PID>
 
-# Ou changer le port dans config.yaml
-sudo nano /opt/llmui-core/config.yaml
-# server:
-#   port: 5001
+# Ou changer le port dans .env, puis redémarrer
+sudo nano /opt/llmui-core/.env        # APP_PORT=8005
+sudo systemctl restart llmui-core llmui-proxy
 ```
 
 #### 3. Permissions
@@ -233,19 +226,19 @@ sudo chmod -R 755 /opt/llmui-core
 sudo chmod -R 700 /opt/llmui-core/data /opt/llmui-core/logs
 ```
 
-#### 4. Configuration invalide
+#### 4. Variable d'environnement invalide
 ```
-yaml.scanner.ScannerError: mapping values are not allowed here
+asyncpg: invalid DATABASE_URL / connection refused
 ```
 
 **Solution**:
 ```bash
-# Vérifier la syntaxe YAML
-python3 -c "import yaml; yaml.safe_load(open('/opt/llmui-core/config.yaml'))"
+# Vérifier le .env (3 variables : DATABASE_URL, APP_PORT, APP_ENV)
+cat /opt/llmui-core/.env
 
-# Restaurer la config par défaut
-sudo cp /opt/llmui-core/config.yaml.example /opt/llmui-core/config.yaml
-sudo chown llmui:llmui /opt/llmui-core/config.yaml
+# Recréer le .env depuis le modèle du dépôt si besoin,
+# puis renseigner DATABASE_URL (mot de passe PostgreSQL)
+sudo cp .env.example /opt/llmui-core/.env
 ```
 
 ### Proxy ne démarre pas
@@ -258,10 +251,10 @@ sudo chown llmui:llmui /opt/llmui-core/config.yaml
 sudo journalctl -u llmui-proxy -n 50
 
 # Vérifier que le backend est actif
-sudo systemctl status llmui-backend
+sudo systemctl status llmui-core
 
 # Port 8080 libre?
-sudo lsof -i :8080
+sudo lsof -i :8000
 
 # Test manuel
 sudo su - llmui -c "/opt/llmui-core/venv/bin/python /opt/llmui-core/src/llmui_proxy.py"
@@ -328,10 +321,10 @@ sudo systemctl disable apache2
 **Solution**:
 ```bash
 # 1. Vérifier les services
-sudo systemctl status llmui-backend llmui-proxy
+sudo systemctl status llmui-core llmui-proxy
 
 # 2. Démarrer si arrêtés
-sudo systemctl start llmui-backend
+sudo systemctl start llmui-core
 sleep 5
 sudo systemctl start llmui-proxy
 
@@ -339,7 +332,7 @@ sudo systemctl start llmui-proxy
 sudo tail -f /var/log/nginx/llmui-error.log
 
 # 4. Test direct du backend
-curl http://localhost:5000/api/health
+curl http://localhost:8004/health
 ```
 
 ### Erreur 504 Gateway Timeout
@@ -361,9 +354,8 @@ proxy_read_timeout 120s;
 # 2. Recharger Nginx
 sudo nginx -t && sudo systemctl reload nginx
 
-# 3. Augmenter timeout Ollama dans config.yaml
-ollama:
-  timeout: 600  # 10 minutes
+# 3. Le timeout Ollama se règle dans /zadmin (section Andy) ou via les
+#    constantes TIMEOUT_CONFIG de src/llmui_backend.py (plafond 4 h — M-04)
 ```
 
 ### Erreur 401 Unauthorized
@@ -374,18 +366,18 @@ ollama:
 ```bash
 # 1. Vérifier le token
 curl -H "Authorization: Bearer YOUR_TOKEN" \
-  http://localhost:5000/api/auth/verify
+  http://localhost:8004/api/auth/verify
 
 # 2. Régénérer un token
-curl -X POST http://localhost:5000/api/auth/login \
+curl -X POST http://localhost:8004/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"your_password"}'
 
-# 3. Vérifier la config JWT
-cat /opt/llmui-core/config.yaml | grep jwt_secret
+# 3. La clé de session (session_secret_key) vit en base (table system_config,
+#    chiffrée) et est générée au premier démarrage — elle ne s'édite pas à la main
 
-# 4. Si secret changé, redémarrer
-sudo systemctl restart llmui-backend llmui-proxy
+# 4. En cas de doute, redémarrer
+sudo systemctl restart llmui-core llmui-proxy
 ```
 
 ### WebSocket se déconnecte
@@ -402,11 +394,11 @@ proxy_read_timeout 3600s;
 proxy_send_timeout 3600s;
 
 # 2. Vérifier les logs
-sudo journalctl -u llmui-backend -f | grep -i websocket
+sudo journalctl -u llmui-core -f | grep -i websocket
 
 # 3. Test WebSocket
 npm install -g wscat
-wscat -c ws://localhost:5000/ws/chat
+wscat -c ws://localhost:8004/ws/chat
 ```
 
 ---
@@ -494,8 +486,7 @@ sudo systemctl restart ollama
 # Vérifier GPU
 nvidia-smi
 
-# Réduire nombre de modèles simultanés
-# Modifier config.yaml pour utiliser 1 worker au lieu de 2
+# Réduire le nombre de workers dans /zadmin (ou DEFAULT_WORKER_MODELS)
 
 # Ou forcer CPU
 sudo systemctl stop ollama
@@ -506,71 +497,46 @@ OLLAMA_FORCE_CPU=1 sudo -u ollama ollama serve
 
 ## 💾 Erreurs de base de données
 
-### SQLite locked
+### PostgreSQL inaccessible
 
-**Symptôme**: `database is locked`
+**Symptôme**: `asyncpg ... Connection refused` au démarrage du backend
 
 **Solution**:
 ```bash
-# 1. Identifier les processus utilisant la DB
-sudo lsof /opt/llmui-core/data/*.db
+# 1. Démarrer / vérifier le service
+sudo systemctl enable --now postgresql
+sudo systemctl status postgresql
 
-# 2. Arrêter les services
-sudo systemctl stop llmui-backend llmui-proxy
-
-# 3. Vérifier intégrité
-sqlite3 /opt/llmui-core/data/llmui.db "PRAGMA integrity_check;"
-
-# 4. Si OK, redémarrer
-sudo systemctl start llmui-backend llmui-proxy
+# 2. Tester la connexion (DATABASE_URL du .env)
+psql "postgresql://llmui_user@localhost:5432/llmui_core" -c '\conninfo'
 ```
 
-### Base de données corrompue
+### Authentification PostgreSQL échouée
 
-**Symptôme**: `database disk image is malformed`
+**Symptôme**: `password authentication failed for user "llmui_user"`
 
 **Solution**:
 ```bash
-# 1. Arrêter les services
-sudo systemctl stop llmui-backend llmui-proxy
-
-# 2. Backup
-cp /opt/llmui-core/data/llmui.db /opt/llmui-core/data/llmui.db.corrupt
-
-# 3. Exporter données
-sqlite3 /opt/llmui-core/data/llmui.db.corrupt ".dump" > /tmp/dump.sql
-
-# 4. Créer nouvelle DB
-rm /opt/llmui-core/data/llmui.db
-sqlite3 /opt/llmui-core/data/llmui.db < /tmp/dump.sql
-
-# 5. Vérifier
-sqlite3 /opt/llmui-core/data/llmui.db "PRAGMA integrity_check;"
-
-# 6. Redémarrer
-sudo systemctl start llmui-backend llmui-proxy
+# Le mot de passe du .env doit correspondre au rôle PostgreSQL.
+# Resynchroniser à partir de la valeur du .env :
+DB_PASS=$(sed -n 's#.*://llmui_user:\([^@]*\)@.*#\1#p' /opt/llmui-core/.env)
+sudo -u postgres psql -c "ALTER ROLE llmui_user WITH PASSWORD '$DB_PASS';"
+sudo systemctl restart llmui-core
 ```
 
-### Erreur migration
+### Table manquante
 
-**Symptôme**: `no such table: conversations`
+**Symptôme**: `relation "conversations" does not exist`
 
 **Solution**:
 ```bash
-# Réinitialiser la DB (PERTE DE DONNÉES!)
-sudo systemctl stop llmui-backend llmui-proxy
-
-# Backup
-sudo cp /opt/llmui-core/data/llmui.db /opt/llmui-core/backups/
-
-# Supprimer
-sudo rm /opt/llmui-core/data/llmui.db
-
-# Redémarrer (crée automatiquement)
-sudo systemctl start llmui-backend
+# Le schéma provient de create_database.sql (idempotent) ; Alembic gère
+# ensuite les migrations. Réappliquer le script (sans perte de données) :
+sudo -u postgres psql -d llmui_core -f postInstallScripts/create_database.sql
+sudo systemctl restart llmui-core
 
 # Vérifier les logs
-sudo journalctl -u llmui-backend -n 20
+sudo journalctl -u llmui-core -n 20
 ```
 
 ---
@@ -589,40 +555,33 @@ htop
 iostat -x 1
 
 # 3. Temps de réponse API
-time curl http://localhost:5000/api/health
+time curl http://localhost:8004/health
 
 # 4. Logs
-sudo journalctl -u llmui-backend | grep "processing_time"
+sudo journalctl -u llmui-core | grep "processing_time"
 ```
 
 **Solutions**:
 
-#### Cache
-```yaml
-# Dans config.yaml
-caching:
-  enabled: true
-  response_cache_size: 2000
-  embedding_cache_size: 10000
+#### Cache (Redis)
+```bash
+# Cache + rate limiting reposent sur Redis — vérifier qu'il tourne
+redis-cli ping        # → PONG
+sudo systemctl enable --now redis-server
 ```
 
 #### Optimiser Ollama
-```bash
-# Moins de workers
-# config.yaml:
-ollama:
-  models:
-    workers:
-      - "phi3:3.8b"  # Un seul au lieu de 2
-```
+Réduire le nombre de workers dans **/zadmin** (ou via la constante
+`DEFAULT_WORKER_MODELS` de `src/llmui_backend.py`).
 
-#### Base de données
+#### Base de données (PostgreSQL)
 ```bash
-# Vacuum SQLite
-sqlite3 /opt/llmui-core/data/llmui.db "VACUUM;"
+# Compacter / analyser
+sudo -u postgres psql -d llmui_core -c "VACUUM ANALYZE;"
 
-# Nettoyer vieux messages
-sqlite3 /opt/llmui-core/data/llmui.db "DELETE FROM messages WHERE created_at < datetime('now', '-30 days');"
+# Purger les vieux messages (> 30 jours)
+sudo -u postgres psql -d llmui_core -c \
+  "DELETE FROM messages WHERE created_at < NOW() - INTERVAL '30 days';"
 ```
 
 ### Mémoire saturée
@@ -644,7 +603,7 @@ sudo systemctl daemon-reload
 sudo systemctl restart ollama
 
 # Nettoyer cache
-sudo systemctl restart llmui-backend
+sudo systemctl restart llmui-core
 ```
 
 ---
@@ -744,7 +703,7 @@ sudo tail -f /var/log/nginx/llmui-error.log
 # )
 
 # Redémarrer
-sudo systemctl restart llmui-backend
+sudo systemctl restart llmui-core
 ```
 
 ### Fichiers statiques 404
@@ -772,13 +731,13 @@ curl -I http://localhost/base.css
 
 ```bash
 # Backend (temps réel)
-sudo journalctl -u llmui-backend -f
+sudo journalctl -u llmui-core -f
 
 # Backend (dernières 100 lignes)
-sudo journalctl -u llmui-backend -n 100
+sudo journalctl -u llmui-core -n 100
 
 # Backend (depuis 1h)
-sudo journalctl -u llmui-backend --since "1 hour ago"
+sudo journalctl -u llmui-core --since "1 hour ago"
 
 # Proxy
 sudo journalctl -u llmui-proxy -f
@@ -794,7 +753,7 @@ sudo journalctl -u ollama -f
 
 # Tous en même temps (multitail)
 sudo multitail \
-  -l "journalctl -u llmui-backend -f" \
+  -l "journalctl -u llmui-core -f" \
   -l "journalctl -u llmui-proxy -f" \
   -l "tail -f /var/log/nginx/llmui-error.log"
 ```
@@ -803,24 +762,24 @@ sudo multitail \
 
 ```bash
 # Erreurs seulement
-sudo journalctl -u llmui-backend -p err -n 50
+sudo journalctl -u llmui-core -p err -n 50
 
 # Recherche mot-clé
-sudo journalctl -u llmui-backend | grep -i "error"
+sudo journalctl -u llmui-core | grep -i "error"
 
 # Export logs
-sudo journalctl -u llmui-backend --since today > ~/llmui-logs-$(date +%Y%m%d).log
+sudo journalctl -u llmui-core --since today > ~/llmui-logs-$(date +%Y%m%d).log
 ```
 
 ### Activer debug
 
 ```python
-# Dans config.yaml
-logging:
-  level: "DEBUG"  # Au lieu de INFO
+# Les logs vont vers journald (aucun fichier de config). Passer APP_ENV en
+# « development » dans /opt/llmui-core/.env augmente la verbosité, puis :
+sudo systemctl restart llmui-core llmui-proxy
 
-# Redémarrer
-sudo systemctl restart llmui-backend llmui-proxy
+# Suivre les logs en direct
+sudo journalctl -u llmui-core -f
 ```
 
 ---
@@ -841,26 +800,26 @@ if [ "$confirm" != "OUI" ]; then exit 1; fi
 sudo tar -czf ~/llmui-backup-$(date +%Y%m%d).tar.gz /opt/llmui-core/data
 
 # Arrêter
-sudo systemctl stop llmui-backend llmui-proxy nginx
+sudo systemctl stop llmui-core llmui-proxy nginx
 
-# Nettoyer cache/logs
-sudo rm -rf /opt/llmui-core/logs/*
-sudo rm -rf /opt/llmui-core/cache/*
-sudo rm -f /opt/llmui-core/data/*.db-journal
+# Nettoyer les logs et fichiers générés
+sudo rm -rf /var/log/llmui/*
+sudo rm -rf /var/lib/llmui/generated/*
 
-# Réinstaller dépendances Python
-sudo su - llmui -c "/opt/llmui-core/venv/bin/pip install --force-reinstall -r /opt/llmui-core/requirements.txt"
+# Réinstaller les dépendances Python (compte propriétaire du venv)
+sudo -u "$(stat -c '%U' /opt/llmui-core/venv)" \
+  /opt/llmui-core/venv/bin/pip install --force-reinstall -r /opt/llmui-core/requirements.txt
 
 # Redémarrer
-sudo systemctl start llmui-backend
+sudo systemctl start llmui-core
 sleep 5
 sudo systemctl start llmui-proxy
 sleep 3
 sudo systemctl start nginx
 
 # Vérifier
-sudo systemctl status llmui-backend llmui-proxy nginx
-curl http://localhost:5000/api/health
+sudo systemctl status llmui-core llmui-proxy nginx
+curl http://localhost:8004/health
 ```
 
 ---
@@ -874,7 +833,7 @@ Si le problème persiste:
 sudo tar -czf ~/llmui-debug-$(date +%Y%m%d).tar.gz \
   /tmp/andy_install.log \
   /var/log/nginx/llmui-*.log \
-  <(journalctl -u llmui-backend -n 500) \
+  <(journalctl -u llmui-core -n 500) \
   <(journalctl -u llmui-proxy -n 500) \
   <(journalctl -u ollama -n 500)
 ```
