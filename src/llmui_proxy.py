@@ -139,9 +139,9 @@ class LLMUIProxyHandler(http.server.SimpleHTTPRequestHandler):
     
     def redirect_to_login(self):
         """Redirect to login page"""
-        protocol = "https" if hasattr(self.server.socket, 'context') else "http"
-        port = HTTPS_PORT if protocol == "https" else HTTP_PORT
-        redirect_url = f"{protocol}://167.114.65.203:{port}/login.html"
+        # Redirection relative : préserve le host utilisé par le client
+        # (localhost, IP LAN ou nom de domaine) sans IP codée en dur
+        redirect_url = "/login.html"
         
         self.send_response(302)
         self.send_header('Location', redirect_url)
@@ -529,9 +529,9 @@ def start_server(port, use_https=False):
             context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
             context.load_cert_chain(SSL_CERT, SSL_KEY)
             httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
-            print(f"✅ HTTPS server active on https://167.114.65.203:{port}")
+            print(f"✅ HTTPS server active on https://localhost:{port}")
         else:
-            print(f"✅ HTTP server active on http://167.114.65.203:{port}")
+            print(f"✅ HTTP server active on http://localhost:{port}")
         
         server_thread = threading.Thread(target=httpd.serve_forever, daemon=True)
         server_thread.start()
