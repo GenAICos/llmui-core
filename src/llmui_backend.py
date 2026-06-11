@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 #!/usr/bin/env python3
+# Copyright © Technologies Nexios TF Inc. — nexiostf.com
+# Tous droits réservés
 """
 LLMUI Core Backend v0.5.0 - FastAPI Version
 ==========================================
@@ -278,32 +280,57 @@ class SessionResponse(BaseModel):
 
 def hash_password_secure(password: str) -> str:
     """
-    Hash sécurisé du mot de passe avec bcrypt (ou PBKDF2 en fallback)
-    IDENTIQUE à la fonction dans andy_installer.py
+    Hash sécurisé du mot de passe avec Argon2 (standard Nexios TF).
+
+    Args:
+        password: Mot de passe en clair à hasher.
+
+    Returns:
+        str: Hash Argon2 (PBKDF2 avec salt en dernier recours si
+        argon2-cffi n'est pas installé).
     """
     try:
-        import bcrypt
-        salt = bcrypt.gensalt()
-        return bcrypt.hashpw(password.encode(), salt).decode()
+        from argon2 import PasswordHasher
+        return PasswordHasher().hash(password)
     except ImportError:
-        print("[WARNING] bcrypt non disponible, utilisation de PBKDF2 avec salt")
-        # Fallback sécurisé si bcrypt n'est pas disponible
+        print("[WARNING] argon2-cffi non disponible, utilisation de PBKDF2 avec salt")
+        # Fallback si argon2-cffi n'est pas disponible
         salt = os.urandom(32)
         key = hashlib.pbkdf2_hmac(
-            'sha256', 
-            password.encode(), 
-            salt, 
+            'sha256',
+            password.encode(),
+            salt,
             100000  # 100,000 itérations
         )
         return binascii.hexlify(salt + key).decode()
 
 def verify_password_secure(password: str, stored_hash: str) -> bool:
     """
-    Vérifie un mot de passe contre son hash (bcrypt ou PBKDF2)
-    Compatible avec les deux méthodes de hashage
+    Vérifie un mot de passe contre son hash.
+
+    Args:
+        password: Mot de passe en clair à vérifier.
+        stored_hash: Hash stocké en base (Argon2, ou bcrypt/PBKDF2
+            pour les comptes créés avant la migration Argon2).
+
+    Returns:
+        bool: True si le mot de passe correspond au hash.
     """
+    # Standard actuel : Argon2
+    if stored_hash.startswith('$argon2'):
+        try:
+            from argon2 import PasswordHasher
+            from argon2.exceptions import VerifyMismatchError
+            try:
+                return PasswordHasher().verify(stored_hash, password)
+            except VerifyMismatchError:
+                return False
+        except ImportError:
+            print("[WARNING] argon2-cffi requis pour vérifier ce hash")
+            return False
+
+    # Compatibilité : hash bcrypt créés avant la migration Argon2
     try:
-        # Tenter bcrypt d'abord
         import bcrypt
         if stored_hash.startswith('$2b$') or stored_hash.startswith('$2a$') or stored_hash.startswith('$2y$'):
             # C'est un hash bcrypt
@@ -312,7 +339,7 @@ def verify_password_secure(password: str, stored_hash: str) -> bool:
         pass
     except Exception as e:
         print(f"[WARNING] Erreur vérification bcrypt: {e}")
-    
+
     # Si ce n'est pas bcrypt, ou si bcrypt n'est pas disponible, essayer PBKDF2
     try:
         # Format PBKDF2: hex(salt + key)
@@ -385,21 +412,13 @@ def init_database():
         # Vérifier si des utilisateurs existent
         cursor.execute('SELECT COUNT(*) FROM users')
         user_count = cursor.fetchone()[0]
-        
-        # Si aucun utilisateur, créer l'utilisateur par défaut
+
+        # Standard Nexios TF : jamais de credentials par défaut.
+        # Le compte admin est créé par l'installateur (scripts/create_admin_user.py).
         if user_count == 0:
-            print("[DB] No users found, creating default user...")
-            default_username = "francois"
-            default_password = "Francois2025!"
-            default_hash = hash_password_secure(default_password)
-            
-            cursor.execute('''
-                INSERT INTO users (username, password_hash, email, is_admin)
-                VALUES (?, ?, ?, ?)
-            ''', (default_username, default_hash, "francois@llmui.org", 1))
-            
-            print(f"[DB] Default user created: {default_username} / {default_password}")
-        
+            print("[DB] WARNING: No users found - login is not possible yet")
+            print("[DB] Create the admin account with: python scripts/create_admin_user.py")
+
         conn.commit()
         conn.close()
         
