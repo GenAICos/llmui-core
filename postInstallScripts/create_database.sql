@@ -19,7 +19,8 @@ BEGIN
         CREATE ROLE llmui_user WITH LOGIN PASSWORD 'DB_PASSWORD';
         RAISE NOTICE 'Utilisateur llmui_user créé.';
     ELSE
-        RAISE NOTICE 'Utilisateur llmui_user existe déjà — ignoré.';
+        ALTER ROLE llmui_user WITH PASSWORD 'DB_PASSWORD';
+        RAISE NOTICE 'Utilisateur llmui_user existe déjà — mot de passe synchronisé.';
     END IF;
 END
 $llmui_role$;
