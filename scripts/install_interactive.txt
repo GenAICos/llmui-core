@@ -122,7 +122,7 @@ print_msg "info" "Répertoire d'installation : $INSTALL_DIR"
 wait_for_continue
 
 # Étape 1: Vérification des prérequis
-print_msg "step" "Étape 1/7 : Vérification des prérequis"
+print_msg "step" "Étape 1/8 : Vérification des prérequis"
 echo ""
 
 print_msg "info" "Vérification de Python 3..."
@@ -152,7 +152,7 @@ fi
 wait_for_continue
 
 # Étape 2: Création de la structure
-print_msg "step" "Étape 2/7 : Création de la structure de fichiers"
+print_msg "step" "Étape 2/8 : Création de la structure de fichiers"
 echo ""
 
 print_msg "info" "Création du répertoire d'installation..."
@@ -162,17 +162,47 @@ else
     print_msg "error" "Échec de la création de la structure"
 fi
 
+print_msg "info" "Création des répertoires de données..."
+if sudo mkdir -p /var/lib/llmui /var/log/llmui 2>> "$ERROR_LOG"; then
+    print_msg "success" "Répertoires de données créés (/var/lib/llmui, /var/log/llmui)"
+else
+    print_msg "error" "Échec de la création des répertoires de données"
+fi
+
 print_msg "info" "Configuration des permissions..."
-if sudo chown -R $USER:$USER "$INSTALL_DIR" 2>> "$ERROR_LOG"; then
+if sudo chown -R $USER:$USER "$INSTALL_DIR" /var/lib/llmui /var/log/llmui 2>> "$ERROR_LOG"; then
     print_msg "success" "Permissions configurées"
 else
     print_msg "error" "Échec de la configuration des permissions"
 fi
 
+# Copie des fichiers du dépôt vers le répertoire d'installation
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [ "$(realpath "$REPO_DIR")" = "$(realpath "$INSTALL_DIR")" ]; then
+    print_msg "info" "Installation lancée depuis $INSTALL_DIR — copie des fichiers ignorée"
+else
+    print_msg "info" "Copie des fichiers depuis $REPO_DIR..."
+    COPY_OK=1
+    for item in src web scripts tools docs examples tests images; do
+        if [ -d "$REPO_DIR/$item" ]; then
+            mkdir -p "$INSTALL_DIR/$item"
+            cp -r "$REPO_DIR/$item/." "$INSTALL_DIR/$item/" 2>> "$ERROR_LOG" || COPY_OK=0
+        fi
+    done
+    if [ -f "$REPO_DIR/config.yaml.example" ]; then
+        cp "$REPO_DIR/config.yaml.example" "$INSTALL_DIR/" 2>> "$ERROR_LOG" || COPY_OK=0
+    fi
+    if [ $COPY_OK -eq 1 ]; then
+        print_msg "success" "Fichiers copiés vers $INSTALL_DIR"
+    else
+        print_msg "error" "Échec de la copie de certains fichiers"
+    fi
+fi
+
 wait_for_continue
 
 # Étape 3: Environnement virtuel Python
-print_msg "step" "Étape 3/7 : Configuration de l'environnement virtuel Python"
+print_msg "step" "Étape 3/8 : Configuration de l'environnement virtuel Python"
 echo ""
 
 print_msg "info" "Création de l'environnement virtuel..."
@@ -202,7 +232,7 @@ fi
 wait_for_continue
 
 # Étape 4: Installation des dépendances
-print_msg "step" "Étape 4/7 : Installation des packages Python"
+print_msg "step" "Étape 4/8 : Installation des packages Python"
 echo ""
 
 # Créer requirements.txt s'il n'existe pas
@@ -217,6 +247,7 @@ python-multipart
 itsdangerous==2.2.0
 pytz==2025.2
 pyyaml
+bcrypt==4.0.1
 EOF
 fi
 
@@ -230,7 +261,7 @@ fi
 wait_for_continue
 
 # Étape 5: Configuration SSL
-print_msg "step" "Étape 5/7 : Configuration SSL"
+print_msg "step" "Étape 5/8 : Configuration SSL"
 echo ""
 
 if [ ! -f "$INSTALL_DIR/ssl/llmui.crt" ]; then
@@ -247,7 +278,7 @@ fi
 wait_for_continue
 
 # Étape 6: Configuration
-print_msg "step" "Étape 6/7 : Configuration de l'application"
+print_msg "step" "Étape 6/8 : Configuration de l'application"
 echo ""
 
 if [ ! -f "$INSTALL_DIR/config.yaml" ]; then
@@ -262,8 +293,22 @@ fi
 
 wait_for_continue
 
-# Étape 7: Démarrage des services
-print_msg "step" "Étape 7/7 : Démarrage des services"
+# Étape 7: Création du compte administrateur
+print_msg "step" "Étape 7/8 : Création du compte administrateur"
+echo ""
+
+print_msg "info" "Configuration du compte de connexion à l'interface web..."
+if "$VENV_DIR/bin/python" "$INSTALL_DIR/scripts/create_admin_user.py"; then
+    print_msg "success" "Compte administrateur configuré"
+else
+    print_msg "error" "Échec de la création du compte administrateur"
+    print_msg "info" "Vous pourrez le créer plus tard : $VENV_DIR/bin/python $INSTALL_DIR/scripts/create_admin_user.py"
+fi
+
+wait_for_continue
+
+# Étape 8: Démarrage des services
+print_msg "step" "Étape 8/8 : Démarrage des services"
 echo ""
 
 print_msg "info" "Démarrage du serveur backend..."
@@ -271,7 +316,8 @@ cd "$INSTALL_DIR"
 "$VENV_DIR/bin/python" src/llmui_backend.py &
 BACKEND_PID=$!
 
-if check_service_start "Backend" "curl -f http://localhost:8000/health 2>/dev/null"; then
+# Le backend écoute sur le port 5000
+if check_service_start "Backend" "curl -f http://localhost:5000/health 2>/dev/null"; then
     print_msg "success" "Backend démarré (PID: $BACKEND_PID)"
 else
     print_msg "error" "Le backend n'a pas pu démarrer correctement"
@@ -282,7 +328,8 @@ print_msg "info" "Démarrage du serveur proxy..."
 "$VENV_DIR/bin/python" src/llmui_proxy.py &
 PROXY_PID=$!
 
-if check_service_start "Proxy" "curl -f http://localhost:9000/ 2>/dev/null"; then
+# Le proxy écoute sur 8000 (HTTP) ou 8443 (HTTPS si certificats présents)
+if check_service_start "Proxy" "curl -f http://localhost:8000/health 2>/dev/null || curl -fk https://localhost:8443/health 2>/dev/null"; then
     print_msg "success" "Proxy démarré (PID: $PROXY_PID)"
 else
     print_msg "error" "Le proxy n'a pas pu démarrer correctement"
@@ -298,8 +345,9 @@ if show_error_summary; then
     echo -e "${GREEN}🎉 LLMUI est maintenant installé et opérationnel !${NC}"
     echo ""
     echo -e "${BLUE}📝 Informations de connexion :${NC}"
-    echo -e "   🌐 Interface Web : ${GREEN}http://localhost:9000${NC}"
-    echo -e "   🔧 API Backend   : ${GREEN}http://localhost:8000${NC}"
+    echo -e "   🌐 Interface Web : ${GREEN}http://localhost:8000${NC} (ou ${GREEN}https://localhost:8443${NC} si SSL)"
+    echo -e "   🔧 API Backend   : ${GREEN}http://localhost:5000${NC}"
+    echo -e "   👤 Connexion     : utilisez le compte administrateur créé à l'étape 7"
     echo ""
     echo -e "${BLUE}📁 Fichiers importants :${NC}"
     echo -e "   • Configuration : ${YELLOW}$INSTALL_DIR/config.yaml${NC}"
