@@ -1,16 +1,15 @@
 #!/bin/bash
-
+# Copyright © Technologies Nexios TF Inc. — nexiostf.com
 # ============================================================================
-# LLMUI Core v2.0 - Complete Uninstallation Script
+# LLMUI Core - Script de désinstallation complète
 # ============================================================================
-# Author: François Chalut
-# Website: https://llmui.org
+# Supprime LLMUI Core du système :
+# - Arrête et désactive les services systemd (llmui-core, llmui-proxy)
+# - Supprime les fichiers d'installation
+# - Optionnellement : données ($DATA_DIR) et logs ($LOG_DIR)
 #
-# This script completely removes LLMUI Core from your system:
-# - Stops and removes systemd services
-# - Removes all installation files
-# - Removes user and group
-# - Optionally removes data and logs
+# La base PostgreSQL (llmui_core) n'est PAS supprimée automatiquement :
+# voir postInstallScripts/README.md pour la procédure côté serveur DB.
 # ============================================================================
 
 set -e
@@ -27,8 +26,6 @@ NC='\033[0m'
 INSTALL_DIR="/opt/llmui-core"
 DATA_DIR="/var/lib/llmui"
 LOG_DIR="/var/log/llmui"
-USER="llmui"
-GROUP="llmui"
 
 log_info() {
     echo -e "${BLUE}ℹ️  $1${NC}"
@@ -77,9 +74,8 @@ echo ""
 echo -e "${RED}⚠️  WARNING: This will completely remove LLMUI Core!${NC}"
 echo ""
 echo "The following will be removed:"
-echo "  • All services (llmui-backend, llmui-proxy)"
+echo "  • All services (llmui-core, llmui-proxy)"
 echo "  • Installation directory: $INSTALL_DIR"
-echo "  • User and group: $USER"
 echo "  • Systemd service files"
 echo "  • Log rotation configuration"
 echo ""
@@ -149,11 +145,11 @@ echo ""
 
 log_info "Stopping LLMUI services..."
 
-if systemctl is-active --quiet llmui-backend 2>/dev/null; then
-    systemctl stop llmui-backend
-    log_success "llmui-backend stopped"
+if systemctl is-active --quiet llmui-core 2>/dev/null; then
+    systemctl stop llmui-core
+    log_success "llmui-core stopped"
 else
-    log_info "llmui-backend was not running"
+    log_info "llmui-core was not running"
 fi
 
 if systemctl is-active --quiet llmui-proxy 2>/dev/null; then
@@ -165,9 +161,9 @@ fi
 
 log_info "Disabling LLMUI services..."
 
-if systemctl is-enabled --quiet llmui-backend 2>/dev/null; then
-    systemctl disable llmui-backend
-    log_success "llmui-backend disabled"
+if systemctl is-enabled --quiet llmui-core 2>/dev/null; then
+    systemctl disable llmui-core
+    log_success "llmui-core disabled"
 fi
 
 if systemctl is-enabled --quiet llmui-proxy 2>/dev/null; then
@@ -181,9 +177,9 @@ fi
 
 log_info "Removing systemd service files..."
 
-if [ -f /etc/systemd/system/llmui-backend.service ]; then
-    rm -f /etc/systemd/system/llmui-backend.service
-    log_success "llmui-backend.service removed"
+if [ -f /etc/systemd/system/llmui-core.service ]; then
+    rm -f /etc/systemd/system/llmui-core.service
+    log_success "llmui-core.service removed"
 fi
 
 if [ -f /etc/systemd/system/llmui-proxy.service ]; then
@@ -253,26 +249,6 @@ if [ -f /etc/logrotate.d/llmui ]; then
 fi
 
 # ============================================================================
-# STEP 7: REMOVE USER AND GROUP
-# ============================================================================
-
-log_info "Removing user and group..."
-
-if id -u "$USER" &>/dev/null; then
-    userdel "$USER" 2>/dev/null || true
-    log_success "User '$USER' removed"
-else
-    log_info "User '$USER' not found"
-fi
-
-if getent group "$GROUP" &>/dev/null; then
-    groupdel "$GROUP" 2>/dev/null || true
-    log_success "Group '$GROUP' removed"
-else
-    log_info "Group '$GROUP' not found"
-fi
-
-# ============================================================================
 # COMPLETION
 # ============================================================================
 
@@ -284,9 +260,8 @@ echo ""
 echo -e "${GREEN}LLMUI Core has been successfully removed!${NC}"
 echo ""
 echo -e "${CYAN}Removed:${NC}"
-echo "  ✅ Services (llmui-backend, llmui-proxy)"
+echo "  ✅ Services (llmui-core, llmui-proxy)"
 echo "  ✅ Installation directory: $INSTALL_DIR"
-echo "  ✅ User and group: $USER"
 echo "  ✅ Systemd service files"
 echo "  ✅ Log rotation configuration"
 
@@ -325,7 +300,7 @@ fi
 
 echo ""
 echo -e "${CYAN}To reinstall LLMUI Core:${NC}"
-echo "  sudo ./install.sh"
+echo "  sudo ./scripts/install_interactive.sh"
 echo ""
 
 exit 0

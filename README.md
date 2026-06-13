@@ -28,7 +28,7 @@ LLMUI Core offre deux modes d'interaction avec des LLMs locaux :
 └──────┬──────┘
        │
 ┌──────▼──────────┐
-│ llmui-backend   │  ← API FastAPI (port 8004)
+│  llmui-core     │  ← API FastAPI (port 8004)
 │   (FastAPI)     │
 └──────┬──────────┘
        │
@@ -107,7 +107,12 @@ nginx -t && systemctl reload nginx
 python3 src/llmui_backend.py
 ```
 
-Ou via systemd (voir `scripts/install.sh` pour l'installation complète des services).
+Ou via systemd. Pour une installation complète automatisée (prérequis, PostgreSQL,
+services systemd, pare-feu), utilisez l'installateur interactif :
+
+```bash
+sudo ./scripts/install_interactive.sh
+```
 
 ---
 
@@ -202,13 +207,13 @@ Documentation complète : [`docs/API.md`](docs/API.md)
 
 ```bash
 # Statut
-sudo systemctl status llmui-backend nginx
+sudo systemctl status llmui-core nginx
 
 # Logs en temps réel
-sudo journalctl -u llmui-backend -f
+sudo journalctl -u llmui-core -f
 
 # Redémarrer
-sudo systemctl restart llmui-backend
+sudo systemctl restart llmui-core
 ```
 
 ## Développement

@@ -1,6 +1,6 @@
 # Documentation API REST - LLMUI Core v1.0.0
 
-**Base URL**: `http://localhost:5000` (ou votre domaine)  
+**Base URL**: `http://localhost:8004` (ou votre domaine)  
 **Version**: 1.0.0
 **Authentification**: JWT Bearer Token
 
@@ -60,7 +60,7 @@ Content-Type: application/json
 
 **Exemple cURL**:
 ```bash
-curl -X POST http://localhost:5000/api/auth/login \
+curl -X POST http://localhost:8004/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username": "admin", "password": "password123"}'
 ```
@@ -192,7 +192,7 @@ data = {
 }
 
 response = requests.post(
-    "http://localhost:5000/api/chat",
+    "http://localhost:8004/api/chat",
     headers=headers,
     json=data
 )
@@ -246,7 +246,7 @@ Authorization: Bearer {access_token}
 
 **Exemple cURL**:
 ```bash
-curl -X GET "http://localhost:5000/api/conversations?user_id=user_123&limit=10" \
+curl -X GET "http://localhost:8004/api/conversations?user_id=user_123&limit=10" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -396,7 +396,7 @@ data = {
 }
 
 response = requests.post(
-    "http://localhost:5000/api/upload",
+    "http://localhost:8004/api/upload",
     headers=headers,
     files=files,
     data=data
@@ -407,7 +407,7 @@ print(response.json()['summary'])
 
 **Exemple cURL**:
 ```bash
-curl -X POST http://localhost:5000/api/upload \
+curl -X POST http://localhost:8004/api/upload \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -F "file=@document.pdf" \
   -F "user_id=user_123" \
@@ -610,7 +610,7 @@ Content-Type: application/json
 
 Vérifier l'état du système.
 
-**Endpoint**: `GET /api/health`
+**Endpoint**: `GET /health`
 
 **Aucune authentification requise**
 
@@ -635,7 +635,7 @@ Vérifier l'état du système.
 
 **Exemple cURL**:
 ```bash
-curl http://localhost:5000/api/health
+curl http://localhost:8004/health
 ```
 
 ### Liste des modèles
@@ -767,7 +767,7 @@ Authorization: Bearer {access_token}
 
 Pour le streaming en temps réel des réponses LLM.
 
-**Endpoint**: `ws://localhost:5000/ws/chat`
+**Endpoint**: `ws://localhost:8004/ws/chat`
 
 **Headers**:
 ```
@@ -823,7 +823,7 @@ Authorization: Bearer {access_token}
 
 **Exemple JavaScript**:
 ```javascript
-const ws = new WebSocket('ws://localhost:5000/ws/chat');
+const ws = new WebSocket('ws://localhost:8004/ws/chat');
 
 ws.onopen = () => {
   ws.send(JSON.stringify({
@@ -957,7 +957,7 @@ class LLMUIClient:
         return response.json()
 
 # Utilisation
-client = LLMUIClient("http://localhost:5000")
+client = LLMUIClient("http://localhost:8004")
 client.login("admin", "password")
 response = client.chat("Bonjour!")
 print(response['response'])
@@ -1000,7 +1000,7 @@ class LLMUIClient {
 }
 
 // Utilisation
-const client = new LLMUIClient('http://localhost:5000');
+const client = new LLMUIClient('http://localhost:8004');
 await client.login('admin', 'password');
 const response = await client.chat('Bonjour!');
 console.log(response.response);
