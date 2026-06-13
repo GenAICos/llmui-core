@@ -238,7 +238,6 @@ curl http://localhost:11434/api/tags
 
 | Fichier | Contenu |
 |---------|---------|
-| [`CLAUDE.md`](CLAUDE.md) | Contexte complet pour Claude Code |
 | [`STANDARDS.md`](STANDARDS.md) | Standards Nexios TF (autorité absolue) |
 | [`CHANGELOG.md`](CHANGELOG.md) | Historique des versions |
 | [`postInstallScripts/README.md`](postInstallScripts/README.md) | Scripts post-installation |
