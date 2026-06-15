@@ -146,12 +146,29 @@ def _bootstrap_runtime_config() -> Dict[str, Any]:
                 if row and row["value"]:
                     return row["value"]
                 new_value = generator()
+                # UPSERT atomique : un simple UPDATE ne persistait RIEN si la
+                # ligne n'existait pas (seed absent) — la clé était alors
+                # régénérée à chaque démarrage, rendant indéchiffrables les
+                # secrets TOTP déjà chiffrés (decrypt → 500 à l'activation après
+                # un redémarrage). On crée la ligne au besoin, on ne la remplit
+                # que si elle est encore vide, puis on RELIT la valeur réellement
+                # persistée afin que proxy, backend, workers et redémarrages
+                # convergent toujours vers la MÊME clé.
                 await conn.execute(
-                    "UPDATE system_config SET value = $1, updated_at = NOW() "
-                    "WHERE section = $2 AND key = $3",
-                    new_value, section, key,
+                    """
+                    INSERT INTO system_config (section, key, value, value_type)
+                    VALUES ($1, $2, $3, 'secret')
+                    ON CONFLICT (section, key) DO UPDATE
+                        SET value = EXCLUDED.value, updated_at = NOW()
+                        WHERE system_config.value IS NULL OR system_config.value = ''
+                    """,
+                    section, key, new_value,
                 )
-                return new_value
+                row = await conn.fetchrow(
+                    "SELECT value FROM system_config WHERE section = $1 AND key = $2",
+                    section, key,
+                )
+                return row["value"] if row and row["value"] else new_value
 
             return {
                 "session_secret": await _get_or_create_secret(
@@ -817,8 +834,14 @@ async def login_user(credentials: LoginRequest, request: Request, db: AsyncSessi
         try:
             secret = security.decrypt_secret(totp_row.secret_encrypted, RUNTIME_CONFIG["totp_encryption_key"])
         except ValueError:
-            logger.exception("Échec du déchiffrement du secret TOTP pour l'utilisateur %s", user.id)
-            raise HTTPException(status_code=500, detail="Erreur interne du serveur")
+            # Secret illisible (clé de chiffrement perdue/modifiée) : impossible
+            # de vérifier le code. Plutôt que de bloquer sur une 500, on route
+            # l'utilisateur — déjà authentifié par mot de passe — vers une
+            # nouvelle configuration TOTP (réenrôlement automatique).
+            logger.exception("Secret TOTP indéchiffrable pour l'utilisateur %s — réenrôlement requis", user.id)
+            request.session["pending_totp_user_id"] = user.id
+            await log_audit(db, user.id, "login_totp_undecryptable", "auth", request)
+            return LoginResponse(success=False, message="Reconfiguration TOTP requise", totp_setup_required=True)
 
         code_ok = security.verify_totp_code(secret, credentials.totpCode)
         if not code_ok:
@@ -916,8 +939,11 @@ async def totp_activate(body: TOTPActivateRequest, request: Request, db: AsyncSe
     try:
         secret = security.decrypt_secret(totp_row.secret_encrypted, RUNTIME_CONFIG["totp_encryption_key"])
     except ValueError:
-        logger.exception("Échec du déchiffrement du secret TOTP pour l'utilisateur %s", user_id)
-        raise HTTPException(status_code=500, detail="Erreur interne du serveur")
+        logger.exception("Secret TOTP indéchiffrable pour l'utilisateur %s — réenrôlement requis", user_id)
+        raise HTTPException(
+            status_code=409,
+            detail="Secret TOTP illisible — rechargez la page pour relancer la configuration.",
+        )
 
     if not security.verify_totp_code(secret, body.code):
         raise HTTPException(status_code=401, detail="Code TOTP invalide")
