@@ -8,6 +8,8 @@
 - Limitation du débit de connexion : Redis
 """
 
+import base64
+import io
 import logging
 import secrets as _secrets
 from typing import List, Optional
@@ -101,9 +103,45 @@ def get_totp_uri(secret: str, account_name: str, issuer: str = "LLMUI Core") -> 
     return pyotp.totp.TOTP(secret).provisioning_uri(name=account_name, issuer_name=issuer)
 
 
+def generate_totp_qr_data_uri(otpauth_uri: str) -> Optional[str]:
+    """Encode l'URI `otpauth://` dans un QR code (SVG) renvoyé sous forme de
+    data URI base64, prêt à l'emploi dans une balise `<img src=...>`.
+
+    Renvoie `None` si la bibliothèque `qrcode` est absente : l'appelant retombe
+    alors sur la saisie manuelle de la clé (dégradation gracieuse). Le format SVG
+    évite toute dépendance à Pillow."""
+    try:
+        import qrcode
+        import qrcode.image.svg
+    except Exception:
+        logger.warning("Bibliothèque 'qrcode' absente — QR code TOTP non généré")
+        return None
+
+    qr = qrcode.QRCode(
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=10,
+        border=2,
+    )
+    qr.add_data(otpauth_uri)
+    qr.make(fit=True)
+    img = qr.make_image(image_factory=qrcode.image.svg.SvgPathImage)
+
+    buf = io.BytesIO()
+    img.save(buf)
+    encoded = base64.b64encode(buf.getvalue()).decode("ascii")
+    return f"data:image/svg+xml;base64,{encoded}"
+
+
 def verify_totp_code(secret: str, code: str) -> bool:
-    """Vérifie un code TOTP à 6 chiffres (fenêtre de tolérance ±30s)."""
-    if not code or not code.isdigit():
+    """Vérifie un code TOTP à 6 chiffres (fenêtre de tolérance ±30s).
+
+    Le code est nettoyé des espaces : certaines applications d'authentification
+    affichent « 123 456 » et l'utilisateur en recopie l'espace, ce qui faisait
+    auparavant échouer la vérification (`isdigit()` → False)."""
+    if not code:
+        return False
+    code = code.replace(" ", "").strip()
+    if not code.isdigit():
         return False
     totp = pyotp.TOTP(secret)
     return totp.verify(code, valid_window=1)

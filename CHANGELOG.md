@@ -9,6 +9,18 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### 🔐 Ajouté — QR code TOTP & correctif de vérification
+
+- **QR code à l'enrôlement TOTP** : `/api/auth/totp/setup` renvoie désormais un
+  champ `qr_code` (data URI SVG, généré sans Pillow via `qrcode`). La page de
+  connexion l'affiche pour un enrôlement par scan ; la saisie manuelle de la clé
+  et le lien `otpauth://` restent disponibles en repli.
+- **Correctif « code invalide »** : `security.verify_totp_code` ignore désormais
+  les espaces (`« 123 456 »` ↦ `123456`). La cause la plus fréquente du symptôme
+  restait toutefois la recopie manuelle de la clé base32 — résolue par le QR code.
+- `qrcode==7.4.2` ajouté à `requirements.txt`. Dégradation gracieuse : si la
+  bibliothèque est absente, `qr_code` vaut `null` et le frontend masque le QR.
+
 ### ✨ Ajouté — Création du compte administrateur à l'installation
 
 - `scripts/install_interactive.sh` : nouvelle **étape 7/9 « Compte administrateur »**.
