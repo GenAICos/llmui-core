@@ -17,16 +17,27 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
   configuration est redemandé. `DATABASE_URL` est lu depuis l'environnement ou
   le `.env` de déploiement.
 
-### 🐛 Corrigé — Activation TOTP en erreur 500 (clé de chiffrement non persistée)
+### 🐛 Corrigé — Activation TOTP en erreur 500 (datetime timezone-aware vs colonne naïve)
+
+- **Cause réelle** (révélée par les logs) : `db_models` mappait les colonnes
+  temporelles (`activated_at`, `last_used_at`, `last_login_at`, etc.) en
+  `TIMESTAMP WITHOUT TIME ZONE`, alors que la base les déclare en `TIMESTAMPTZ`
+  et que le code écrit des `datetime` **timezone-aware** (`datetime.now(timezone.utc)`).
+  asyncpg refusait de lier un datetime aware à un paramètre naïf
+  (`DataError: can't subtract offset-naive and offset-aware datetimes`) →
+  `POST /api/auth/totp/activate` renvoyait **500** à l'écriture de l'activation.
+  Toutes les colonnes datetime utilisent désormais `DateTime(timezone=True)`
+  (aucune migration : les colonnes en base sont déjà `TIMESTAMPTZ`).
+
+### 🐛 Corrigé — Robustesse des secrets applicatifs (clé de chiffrement / session)
 
 - `_bootstrap_runtime_config` / `_get_or_create_secret` : la `totp_encryption_key`
   (et la `session_secret_key`) étaient écrites via un simple `UPDATE` qui ne
-  persistait **rien** si la ligne `system_config` n'existait pas. La clé était
-  alors **régénérée à chaque démarrage**, rendant indéchiffrables les secrets
-  TOTP déjà chiffrés → `POST /api/auth/totp/activate` renvoyait **500** après un
-  redémarrage. Remplacé par un `INSERT … ON CONFLICT … DO UPDATE` atomique suivi
-  d'une relecture : la clé est créée si besoin, jamais remplacée une fois fixée,
-  et tous les processus/redémarrages convergent vers la même valeur.
+  persistait **rien** si la ligne `system_config` n'existait pas — la clé pouvait
+  alors être régénérée à chaque démarrage. Remplacé par un `INSERT … ON CONFLICT
+  … DO UPDATE` atomique suivi d'une relecture : la clé est créée si besoin,
+  jamais remplacée une fois fixée, et tous les processus/redémarrages convergent
+  vers la même valeur.
 - Déchiffrement TOTP impossible : au lieu d'un cul-de-sac 500, le login route
   désormais l'utilisateur (déjà authentifié par mot de passe) vers un
   **réenrôlement TOTP automatique** ; `activate` renvoie un 409 explicite.
