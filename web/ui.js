@@ -1,9 +1,9 @@
 /*
- * LLMUI Core v2.0.1 - UI Methods
+ * LLMUI Core v1.0.0 - UI Methods
  * Author: François Chalut
  * Website: https://llmui.org
  * 
- * CORRECTIONS v2.0.1:
+ * CORRECTIONS v1.0.0:
  * - Liens de téléchargement markdown → HTML cliquables
  * - FIX: Clipboard compatible HTTP/HTTPS (fallback pour HTTP)
  */
@@ -573,7 +573,7 @@ function escapeHtml(text) {
         .replace(/'/g, '&#39;');
 }
 
-// ✅ CORRECTION v2.0.1: Liens de téléchargement markdown → HTML
+// ✅ CORRECTION v1.0.0: Liens de téléchargement markdown → HTML
 LLMUIApp.prototype.formatContent = function(content) {
     if (!content) return '';
 

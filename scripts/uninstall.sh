@@ -50,7 +50,7 @@ log_error() {
 clear
 echo ""
 echo "╔════════════════════════════════════════════════╗"
-echo "║   LLMUI Core v2.0 - Uninstallation Script     ║"
+echo "║   LLMUI Core v1.0.0 - Uninstallation Script   ║"
 echo "╚════════════════════════════════════════════════╝"
 echo ""
 

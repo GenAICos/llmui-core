@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 LLMUI Core - Proxy Server with HTTPS Support
-Version: 2.2.2 - Security fixes and cleanup
+Version: 1.0.0 - Security fixes and cleanup
 
 Author: François Chalut
 Website: https://llmui.org
@@ -611,7 +611,7 @@ def start_server(port, use_https=False):
 def main():
     """Main entry point"""
     print("=" * 70)
-    print("  🚀 LLMUI Core Proxy Server v2.2.2 - Fixed & Secured")
+    print("  🚀 LLMUI Core Proxy Server v1.0.0 - Fixed & Secured")
     print("=" * 70)
     print()
     print(f"📡 Backend: {LLMUI_BACKEND_BASE}")

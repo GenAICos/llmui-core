@@ -31,7 +31,7 @@ def get_system_metadata() -> dict:
         'time': now.strftime('%H:%M:%S %Z'),  # Ex: 14:30:45 EST
         'environment': 'LLMUI Core (Private Server)',
         'backend': 'Ollama',
-        'framework': 'LLMUI Core v2.0'
+        'framework': 'LLMUI Core v1.0.0'
     }
 
 def build_system_prefix(language: str = 'fr') -> str:

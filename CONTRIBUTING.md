@@ -1,4 +1,4 @@
-# Guide de contribution - LLMUI Core v 0.5.0
+# Guide de contribution - LLMUI Core v1.0.0
 
 Merci de votre intérêt pour contribuer à LLMUI Core! Ce document explique comment participer au développement du projet.
 
