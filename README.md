@@ -92,7 +92,17 @@ psql -U postgres -f postInstallScripts/create_database.sql
 
 Voir [`postInstallScripts/README.md`](postInstallScripts/README.md) pour les détails.
 
-### 5. Configurer Nginx
+### 5. Créer le compte administrateur
+
+```bash
+python3 scripts/create_admin.py
+```
+
+Le script demande un courriel et un mot de passe (12 caractères minimum, hashé en
+Argon2) puis inscrit le compte admin dans PostgreSQL. La configuration TOTP
+(obligatoire pour les admins) est ensuite demandée à la première connexion.
+
+### 6. Configurer Nginx
 
 ```bash
 # Copier et adapter le vhost (remplacer DOMAIN et APP_PORT)
@@ -101,14 +111,16 @@ ln -s /etc/nginx/sites-available/llmui-core /etc/nginx/sites-enabled/
 nginx -t && systemctl reload nginx
 ```
 
-### 6. Démarrer le backend
+### 7. Démarrer le backend
 
 ```bash
 python3 src/llmui_backend.py
 ```
 
 Ou via systemd. Pour une installation complète automatisée (prérequis, PostgreSQL,
-services systemd, pare-feu), utilisez l'installateur interactif :
+**création du compte administrateur**, services systemd, pare-feu), utilisez
+l'installateur interactif — il demande le courriel et le mot de passe de l'admin
+puis les inscrit dans PostgreSQL :
 
 ```bash
 sudo ./scripts/install_interactive.sh

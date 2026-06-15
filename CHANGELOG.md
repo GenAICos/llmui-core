@@ -9,6 +9,18 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### ✨ Ajouté — Création du compte administrateur à l'installation
+
+- `scripts/install_interactive.sh` : nouvelle **étape 7/9 « Compte administrateur »**.
+  Après la création de la base PostgreSQL, l'installateur demande le courriel et
+  le mot de passe de l'admin puis les inscrit dans la table `users` (hash Argon2)
+  en réutilisant `scripts/create_admin.py`. Étapes systemd et pare-feu renumérotées
+  (8/9 et 9/9).
+- L'étape est idempotente (création ou réinitialisation), peut être ignorée
+  (`[O/n]`), et n'interrompt jamais l'installateur en cas d'abandon ou d'échec.
+- `README.md` / `docs/CONFIGURATION.md` : documentation alignée (création de l'admin
+  intégrée au flux d'installation).
+
 ### 🎨 Modifié — Harmonisation visuelle avec LLMUI Entreprise
 
 Thème web aligné sur l'identité Technologies Nexios TF (LLMUI Entreprise) :
