@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<!-- Copyright © Technologies Nexios TF Inc. — nexiostf.com -->
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Andy — Support dreamAI</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="css/chat.css">
+</head>
+<body>
+
+  <!-- ── Vue : Login ─────────────────────────────────────────────────────── -->
+  <div id="view-login" class="login-page" style="display:none">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="login-logo-icon">dAI</div>
+        <h1>dreamAI</h1>
+        <p>Support — Andy</p>
+      </div>
+
+      <!-- Step 1 : email + password -->
+      <div id="login-step-credentials">
+        <form id="login-form">
+          <div class="form-group">
+            <label class="form-label" for="login-email">Adresse courriel</label>
+            <input type="email" id="login-email" class="form-input" required autocomplete="username" placeholder="vous@exemple.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="login-password">Mot de passe</label>
+            <input type="password" id="login-password" class="form-input" required autocomplete="current-password" placeholder="••••••••">
+          </div>
+          <div id="login-alert" class="form-alert" style="display:none"></div>
+          <button type="submit" id="login-btn" class="btn-primary">Se connecter</button>
+        </form>
+      </div>
+
+      <!-- Step 2 : TOTP -->
+      <div id="login-step-totp" style="display:none">
+        <p class="step-hint">Entrez le code de votre application d'authentification.</p>
+        <form id="totp-form">
+          <div class="form-group">
+            <label class="form-label" for="totp-code">Code TOTP</label>
+            <input type="text" id="totp-code" class="form-input totp-input" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" placeholder="000000" autocomplete="one-time-code">
+          </div>
+          <div id="totp-alert" class="form-alert" style="display:none"></div>
+          <button type="submit" id="totp-btn" class="btn-primary">Valider</button>
+          <button type="button" id="totp-back" class="btn-ghost">Retour</button>
+        </form>
+      </div>
+
+      <!-- Step 3 : Create password (first login) -->
+      <div id="login-step-newpwd" style="display:none">
+        <p class="step-hint">Première connexion — choisissez votre mot de passe.</p>
+        <form id="newpwd-form">
+          <div class="form-group">
+            <label class="form-label" for="new-password">Nouveau mot de passe</label>
+            <input type="password" id="new-password" class="form-input" required minlength="8" placeholder="••••••••">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="confirm-password">Confirmer</label>
+            <input type="password" id="confirm-password" class="form-input" required placeholder="••••••••">
+          </div>
+          <div id="newpwd-alert" class="form-alert" style="display:none"></div>
+          <button type="submit" id="newpwd-btn" class="btn-primary">Enregistrer</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Vue : Chat ──────────────────────────────────────────────────────── -->
+  <div id="view-chat" class="chat-app" style="display:none">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-top">
+        <div class="sidebar-brand">
+          <div class="brand-icon">dAI</div>
+          <div class="brand-text">
+            <span class="brand-name">dreamAI</span>
+            <span class="brand-sub">SUPPORT</span>
+          </div>
+        </div>
+
+        <div class="conversations">
+          <div class="conv-item active" id="conv-andy">
+            <div class="conv-avatar">A</div>
+            <div class="conv-info">
+              <span class="conv-name">Andy</span>
+              <span class="conv-status"><span class="status-dot"></span>En ligne</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="lang-section">
+          <p class="lang-label">LANGUE</p>
+          <div class="lang-grid" id="lang-grid">
+            <button class="lang-btn active" data-lang="fr">🇫🇷 Français</button>
+            <button class="lang-btn" data-lang="en">🇬🇧 English</button>
+            <button class="lang-btn" data-lang="es">🇪🇸 Español</button>
+            <button class="lang-btn" data-lang="de">🇩🇪 Deutsch</button>
+            <button class="lang-btn" data-lang="pt">🇧🇷 Português</button>
+            <button class="lang-btn" data-lang="ar">🇸🇦 العربية</button>
+          </div>
+        </div>
+
+        <button class="btn-new-conv" id="btn-new-conv">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+          Nouvelle conversation
+        </button>
+      </div>
+
+      <div class="sidebar-bottom">
+        <a href="/zadmin/" class="sidebar-admin-link">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>
+          Panel Admin
+        </a>
+        <span class="sidebar-company">Technologies Nexios TF Inc.</span>
+      </div>
+    </aside>
+
+    <!-- Main chat -->
+    <main class="chat-main">
+
+      <!-- Chat header -->
+      <div class="chat-header">
+        <div class="chat-header-left">
+          <div class="chat-avatar">A</div>
+          <div class="chat-header-info">
+            <span class="chat-name">Andy</span>
+            <span class="chat-subtitle">Assistant IA - dreamAI</span>
+          </div>
+        </div>
+        <button class="btn-clear-chat" id="btn-clear-chat" title="Effacer la conversation">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+        </button>
+      </div>
+
+      <!-- Messages -->
+      <div class="chat-messages" id="chat-messages"></div>
+
+      <!-- Input -->
+      <div class="chat-footer">
+        <div class="chat-input-wrap">
+          <textarea
+            id="chat-input"
+            class="chat-textarea"
+            placeholder="Posez votre question à Andy..."
+            rows="1"
+            maxlength="4000"
+          ></textarea>
+          <button class="btn-send" id="btn-send" title="Envoyer">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          </button>
+        </div>
+        <p class="chat-hint">Appuyez sur <kbd>Entrée</kbd> pour envoyer · <kbd>Maj+Entrée</kbd> pour un saut de ligne</p>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="js/chat.js"></script>
+</body>
+</html>
