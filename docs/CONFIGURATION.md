@@ -112,7 +112,7 @@ APP_PORT   = os.getenv("APP_PORT", "8004")   # Backend interne (127.0.0.1)
 
 - [ ] `.env` ne contient que `DATABASE_URL`, `APP_PORT`, `APP_ENV`
 - [ ] Base PostgreSQL créée (`postInstallScripts/create_database.sql`)
-- [ ] Premier admin créé (`python3 scripts/create_admin.py`)
+- [ ] Premier admin créé (étape 7 de l'installateur interactif, ou `python3 scripts/create_admin.py`)
 - [ ] `cors_allowed_origins` renseigné dans `/zadmin` (jamais `*`)
 - [ ] TOTP activé pour les comptes admin
 - [ ] Nginx + TLS en place (HTTP → HTTPS)

@@ -131,7 +131,7 @@ wait_for_continue
 # ============================================================================
 # ÉTAPE 1 — PRÉREQUIS SYSTÈME
 # ============================================================================
-print_msg "step" "Étape 1/8 : Vérification et installation des prérequis système"
+print_msg "step" "Étape 1/9 : Vérification et installation des prérequis système"
 echo ""
 
 # Détecter le gestionnaire de paquets
@@ -291,7 +291,7 @@ wait_for_continue
 # ============================================================================
 # ÉTAPE 2 — STRUCTURE DE FICHIERS
 # ============================================================================
-print_msg "step" "Étape 2/8 : Création de la structure de fichiers"
+print_msg "step" "Étape 2/9 : Création de la structure de fichiers"
 echo ""
 
 # Le code s'exécute en place depuis le clone (WorkingDirectory du service) ;
@@ -323,7 +323,7 @@ wait_for_continue
 # ============================================================================
 # ÉTAPE 3 — ENVIRONNEMENT VIRTUEL PYTHON
 # ============================================================================
-print_msg "step" "Étape 3/8 : Environnement virtuel Python"
+print_msg "step" "Étape 3/9 : Environnement virtuel Python"
 echo ""
 
 if [ -d "$VENV_DIR" ]; then
@@ -352,7 +352,7 @@ wait_for_continue
 # ============================================================================
 # ÉTAPE 4 — DÉPENDANCES PYTHON
 # ============================================================================
-print_msg "step" "Étape 4/8 : Installation des packages Python"
+print_msg "step" "Étape 4/9 : Installation des packages Python"
 echo ""
 
 # Chercher requirements.txt (priorité : répertoire courant, puis INSTALL_DIR)
@@ -408,7 +408,7 @@ wait_for_continue
 # ============================================================================
 # ÉTAPE 5 — CONFIGURATION .env
 # ============================================================================
-print_msg "step" "Étape 5/8 : Configuration de l'environnement (.env)"
+print_msg "step" "Étape 5/9 : Configuration de l'environnement (.env)"
 echo ""
 
 ENV_FILE="$INSTALL_DIR/.env"
@@ -475,7 +475,7 @@ wait_for_continue
 # ============================================================================
 # ÉTAPE 6 — BASE DE DONNÉES POSTGRESQL
 # ============================================================================
-print_msg "step" "Étape 6/8 : Base de données PostgreSQL"
+print_msg "step" "Étape 6/9 : Base de données PostgreSQL"
 echo ""
 
 if command -v psql &>/dev/null; then
@@ -554,9 +554,59 @@ fi
 wait_for_continue
 
 # ============================================================================
-# ÉTAPE 7 — SERVICES SYSTEMD
+# ÉTAPE 7 — COMPTE ADMINISTRATEUR
 # ============================================================================
-print_msg "step" "Étape 7/8 : Création des services systemd"
+print_msg "step" "Étape 7/9 : Création du compte administrateur"
+echo ""
+
+# Localise scripts/create_admin.py : il demande courriel + mot de passe, valide
+# la robustesse, hashe en Argon2 (STANDARDS.md §5/§6) puis insère (ou
+# réinitialise, idempotent) le compte admin dans la table users de PostgreSQL.
+ADMIN_SCRIPT=""
+for candidate in "$SCRIPT_DIR/create_admin.py" "$INSTALL_DIR/scripts/create_admin.py" "./scripts/create_admin.py"; do
+    [ -f "$candidate" ] && ADMIN_SCRIPT="$(realpath "$candidate")" && break
+done
+
+# DATABASE_URL (mot de passe synchronisé à l'étape 6) : create_admin.py se
+# connecte en tant que llmui_user via cette URL pour écrire dans la table users.
+ADMIN_DB_URL="$(sed -n 's/^DATABASE_URL=//p' "$ENV_FILE" 2>/dev/null | head -1)"
+
+if [ -z "$ADMIN_SCRIPT" ]; then
+    print_msg "warning" "scripts/create_admin.py introuvable — créez l'admin plus tard : python3 scripts/create_admin.py"
+elif [ ! -x "$VENV_DIR/bin/python" ]; then
+    print_msg "warning" "Python du venv introuvable — créez l'admin plus tard : python3 scripts/create_admin.py"
+elif [ -z "$ADMIN_DB_URL" ]; then
+    print_msg "warning" "DATABASE_URL absent de $ENV_FILE (base non configurée ?) — créez l'admin plus tard : python3 scripts/create_admin.py"
+else
+    echo -e "${BLUE}Un compte administrateur est requis pour la première connexion à l'interface.${NC}"
+    echo -e "${BLUE}Le courriel et le mot de passe vous seront demandés ci-dessous.${NC}"
+    echo ""
+    printf "Créer le compte administrateur maintenant ? [O/n] "
+    read -r CREATE_ADMIN_ANSWER || CREATE_ADMIN_ANSWER=""
+    case "${CREATE_ADMIN_ANSWER}" in
+        [nN]|[nN][oO]|[nN][oO][nN])
+            print_msg "info" "Création ignorée — lancez plus tard : python3 scripts/create_admin.py"
+            ;;
+        *)
+            # create_admin.py est interactif (getpass) et idempotent. On lui
+            # transmet DATABASE_URL via l'environnement. Employé comme condition
+            # de `if`, `set -e` est neutralisé : un abandon (Ctrl-C) ou un échec
+            # de connexion n'interrompt pas l'installateur — on le signale.
+            if DATABASE_URL="$ADMIN_DB_URL" "$VENV_DIR/bin/python" "$ADMIN_SCRIPT"; then
+                print_msg "success" "Compte administrateur enregistré dans PostgreSQL"
+            else
+                print_msg "warning" "Compte administrateur non créé — relancez : python3 scripts/create_admin.py"
+            fi
+            ;;
+    esac
+fi
+
+wait_for_continue
+
+# ============================================================================
+# ÉTAPE 8 — SERVICES SYSTEMD
+# ============================================================================
+print_msg "step" "Étape 8/9 : Création des services systemd"
 echo ""
 
 BACKEND_SCRIPT=""
@@ -676,9 +726,9 @@ fi
 wait_for_continue
 
 # ============================================================================
-# ÉTAPE 8 — PARE-FEU (UFW)
+# ÉTAPE 9 — PARE-FEU (UFW)
 # ============================================================================
-print_msg "step" "Étape 8/8 : Pare-feu (ufw) & fail2ban"
+print_msg "step" "Étape 9/9 : Pare-feu (ufw) & fail2ban"
 echo ""
 
 if command -v ufw &>/dev/null; then
@@ -760,6 +810,7 @@ if show_error_summary; then
     echo -e "  ${BLUE}Logs web      :${NC}  ${GREEN}sudo journalctl -u llmui-proxy -f${NC}"
     echo -e "  ${BLUE}Pare-feu      :${NC}  ${GREEN}sudo ufw status${NC}"
     echo ""
+    echo -e "  ${BLUE}Compte admin  :${NC}  ${GREEN}python3 scripts/create_admin.py${NC} ${YELLOW}(créer / réinitialiser)${NC}"
     echo -e "  ${BLUE}Fichier .env  :${NC}  ${YELLOW}$INSTALL_DIR/.env${NC}"
     echo -e "  ${BLUE}Logs install  :${NC}  ${YELLOW}$LOG_FILE${NC}"
 else
