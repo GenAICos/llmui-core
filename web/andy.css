@@ -24,8 +24,8 @@
     border-radius: 50%;
     border: none;
     cursor: pointer;
-    background: linear-gradient(135deg, #06b6d4, #3b82f6);
-    box-shadow: 0 4px 20px rgba(6, 182, 212, 0.5);
+    background: linear-gradient(135deg, #6366f1, #a855f7);
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.5);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -37,7 +37,7 @@
 
 .andy-toggle-btn:hover {
     transform: scale(1.1);
-    box-shadow: 0 8px 28px rgba(6, 182, 212, 0.7);
+    box-shadow: 0 8px 28px rgba(99, 102, 241, 0.7);
 }
 
 .andy-toggle-btn:active {
@@ -82,9 +82,9 @@
     right: 0;
     width: 360px;
     background: var(--bg-panel, #1e293b);
-    border: 1px solid var(--border-cyan, rgba(6, 182, 212, 0.3));
+    border: 1px solid var(--border-cyan, rgba(99, 102, 241, 0.3));
     border-radius: 16px;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(6, 182, 212, 0.1);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(99, 102, 241, 0.1);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -125,8 +125,8 @@
     height: 38px;
     border-radius: 50%;
     object-fit: cover;
-    border: 2px solid var(--cyan, #06b6d4);
-    box-shadow: 0 0 8px rgba(6, 182, 212, 0.3);
+    border: 2px solid var(--cyan, #818cf8);
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.3);
 }
 
 .andy-header-info {
@@ -143,7 +143,7 @@
 
 .andy-status-text {
     font-size: 0.72rem;
-    color: var(--success, #10b981);
+    color: var(--success, #22c55e);
     display: flex;
     align-items: center;
     gap: 0.3rem;
@@ -152,7 +152,7 @@
 .andy-status-dot {
     width: 6px;
     height: 6px;
-    background: var(--success, #10b981);
+    background: var(--success, #22c55e);
     border-radius: 50%;
     display: inline-block;
     animation: andyPulse 2s infinite;
@@ -198,7 +198,7 @@
 
 .andy-close-btn:hover {
     background: var(--bg-hover, #475569);
-    border-color: var(--cyan, #06b6d4);
+    border-color: var(--cyan, #818cf8);
 }
 
 /* ============================================================================
@@ -269,7 +269,7 @@
 }
 
 .andy-from-user .andy-msg-bubble {
-    background: linear-gradient(135deg, #06b6d4, #3b82f6);
+    background: linear-gradient(135deg, #6366f1, #a855f7);
     color: white;
     border-bottom-right-radius: 4px;
 }
@@ -305,7 +305,7 @@
 .andy-thinking-dots span {
     width: 5px;
     height: 5px;
-    background: var(--cyan, #06b6d4);
+    background: var(--cyan, #818cf8);
     border-radius: 50%;
     animation: andyBounce 1.2s infinite ease-in-out;
 }
@@ -348,7 +348,7 @@
 }
 
 .andy-input:focus {
-    border-color: var(--border-focus, rgba(6, 182, 212, 0.6));
+    border-color: var(--border-focus, rgba(99, 102, 241, 0.6));
 }
 
 .andy-input::placeholder {
@@ -363,7 +363,7 @@
 .andy-send-btn {
     width: 34px;
     height: 34px;
-    background: linear-gradient(135deg, #06b6d4, #3b82f6);
+    background: linear-gradient(135deg, #6366f1, #a855f7);
     border: none;
     border-radius: 10px;
     display: flex;
@@ -377,7 +377,7 @@
 
 .andy-send-btn:hover:not(:disabled) {
     transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(6, 182, 212, 0.5);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.5);
 }
 
 .andy-send-btn:disabled {

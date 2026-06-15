@@ -99,15 +99,15 @@
 
 .dialog-btn-ok,
 .dialog-btn-confirm {
-    background: var(--color-primary, #3b82f6);
+    background: var(--color-primary, #6366f1);
     color: white;
 }
 
 .dialog-btn-ok:hover,
 .dialog-btn-confirm:hover {
-    background: var(--color-primary-hover, #2563eb);
+    background: var(--color-primary-hover, #4f46e5);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
 }
 
 .dialog-btn-cancel {
@@ -130,12 +130,12 @@
 }
 
 .dialog-success .dialog-header {
-    background: rgba(16, 185, 129, 0.1);
-    border-bottom-color: #10b981;
+    background: rgba(34, 197, 94, 0.1);
+    border-bottom-color: #22c55e;
 }
 
 .dialog-success .dialog-icon {
-    background: #10b981;
+    background: #22c55e;
 }
 
 .dialog-warning .dialog-header {
@@ -148,12 +148,12 @@
 }
 
 .dialog-info .dialog-header {
-    background: rgba(59, 130, 246, 0.1);
-    border-bottom-color: #3b82f6;
+    background: rgba(99, 102, 241, 0.1);
+    border-bottom-color: #6366f1;
 }
 
 .dialog-info .dialog-icon {
-    background: #3b82f6;
+    background: #6366f1;
 }
 
 .dialog-confirm .dialog-header {

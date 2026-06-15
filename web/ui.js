@@ -260,8 +260,8 @@ LLMUIApp.prototype.switchMode = function(mode) {
             modeDesc.style.borderLeft = '3px solid #eab308';
         } else {
             modeDesc.innerHTML = '💡 Mode consensus : Plusieurs modèles analysent et fusionnent leurs réponses (plus robuste)';
-            modeDesc.style.background = 'rgba(6, 182, 212, 0.1)';
-            modeDesc.style.borderLeft = '3px solid #06b6d4';
+            modeDesc.style.background = 'rgba(99, 102, 241, 0.1)';
+            modeDesc.style.borderLeft = '3px solid #818cf8';
         }
     }
     
