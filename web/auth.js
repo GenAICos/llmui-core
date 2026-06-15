@@ -282,8 +282,20 @@ class AuthManager {
         const totpSetup = document.getElementById('totpSetup');
         const totpSecret = document.getElementById('totpSecret');
         const totpUriLink = document.getElementById('totpUriLink');
+        const totpQrBox = document.getElementById('totpQrBox');
+        const totpQrCode = document.getElementById('totpQrCode');
         const recoveryList = document.getElementById('totpRecoveryCodes');
 
+        // QR code : affiché s'il a été généré côté serveur (data URI SVG),
+        // sinon on masque la boîte et l'utilisateur saisit la clé manuellement.
+        if (totpQrBox && totpQrCode) {
+            if (data.qr_code) {
+                totpQrCode.src = data.qr_code;
+                totpQrBox.classList.remove('hidden');
+            } else {
+                totpQrBox.classList.add('hidden');
+            }
+        }
         if (totpSecret) {
             totpSecret.textContent = data.secret;
         }

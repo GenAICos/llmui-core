@@ -396,6 +396,29 @@ body.light-theme {
     margin-bottom: 0.75rem;
 }
 
+/* QR code : toujours sur fond blanc (les modules noirs doivent rester
+   scannables, y compris en thème sombre) et centré. */
+.totp-qr-box {
+    display: flex;
+    justify-content: center;
+    padding: 1rem;
+    background: #ffffff;
+    border-radius: var(--radius-md);
+    margin-bottom: 1rem;
+}
+
+.totp-qr-box img {
+    display: block;
+    width: 200px;
+    height: 200px;
+}
+
+.totp-step-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+}
+
 .totp-secret-box {
     display: flex;
     align-items: center;

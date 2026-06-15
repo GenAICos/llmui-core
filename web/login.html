@@ -102,7 +102,11 @@
                 <p class="totp-setup-desc">Votre compte administrateur nécessite une authentification à deux facteurs.</p>
 
                 <div class="totp-step">
-                    <p class="totp-step-title">1. Ajoutez cette clé dans votre application d'authentification (Google Authenticator, Authy, etc.)</p>
+                    <p class="totp-step-title">1. Scannez ce QR code avec votre application d'authentification (Google Authenticator, Authy, etc.)</p>
+                    <div class="totp-qr-box hidden" id="totpQrBox">
+                        <img id="totpQrCode" alt="QR code de configuration TOTP" width="200" height="200">
+                    </div>
+                    <p class="totp-step-subtitle">Ou entrez cette clé manuellement :</p>
                     <div class="totp-secret-box">
                         <code id="totpSecret"></code>
                         <button type="button" class="copy-btn" id="copyTotpSecret" title="Copier la clé">📋</button>

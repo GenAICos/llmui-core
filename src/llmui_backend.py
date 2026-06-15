@@ -367,6 +367,7 @@ class TOTPSetupResponse(BaseModel):
     success: bool
     secret: str
     otpauth_uri: str
+    qr_code: Optional[str] = None  # data URI SVG (None si `qrcode` non installé)
     recovery_codes: List[str]
 
 
@@ -891,10 +892,12 @@ async def totp_setup(request: Request, db: AsyncSession = Depends(get_db_session
     await db.commit()
     await log_audit(db, user.id, "totp_setup", "auth", request)
 
+    otpauth_uri = security.get_totp_uri(secret, user.email)
     return TOTPSetupResponse(
         success=True,
         secret=secret,
-        otpauth_uri=security.get_totp_uri(secret, user.email),
+        otpauth_uri=otpauth_uri,
+        qr_code=security.generate_totp_qr_data_uri(otpauth_uri),
         recovery_codes=recovery_codes,
     )
 

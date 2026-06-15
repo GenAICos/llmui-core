@@ -36,6 +36,7 @@ redis==5.0.1
 argon2-cffi==23.1.0
 passlib[argon2]==1.7.4
 pyotp==2.9.0                 # TOTP (RFC 6238)
+qrcode==7.4.2                # QR code TOTP en SVG (sans Pillow — enrôlement par scan)
 cryptography==42.0.4         # Fernet — chiffrement des secrets TOTP au repos
 
 # OUTILLAGE & TESTS (STANDARDS.md §10 — ruff ; §11 — pytest)
