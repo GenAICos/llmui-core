@@ -1,30 +1,3 @@
-// Fonction pour changer de langue
-function toggleLanguage() {
-    const langToggle = document.getElementById('langToggle');
-    const langFlag = document.getElementById('langFlag');
-    const langText = document.getElementById('langText');
-    
-    if (!langToggle || !window.app) return;
-    
-    const currentLang = window.app.i18n.currentLang;
-    const newLang = currentLang === 'fr' ? 'en' : 'fr';
-    
-    // Change la langue dans l'application
-    window.app.i18n.setLanguage(newLang);
-    
-    // Met à jour le bouton
-    if (newLang === 'fr') {
-        langFlag.textContent = '🇫🇷';
-        langText.textContent = 'FR';
-    } else {
-        langFlag.textContent = '🇬🇧';
-        langText.textContent = 'EN';
-    }
-    
-    // Met à jour les textes de l'interface
-    window.app.updateTimeoutInfo();
-}
-
 // Fonction pour ajouter un bouton d'édition aux messages utilisateur
 function addEditButton(messageElement) {
     // Vérifie si c'est un message utilisateur
@@ -242,12 +215,6 @@ function showNotification(message, type = 'info') {
 
 // Initialisation au chargement de la page
 document.addEventListener('DOMContentLoaded', () => {
-    // Ajoute le gestionnaire pour le bouton de langue
-    const langToggle = document.getElementById('langToggle');
-    if (langToggle) {
-        langToggle.addEventListener('click', toggleLanguage);
-    }
-    
     // Observer pour détecter l'ajout de nouveaux messages
     const messagesContainer = document.getElementById('messagesContainer');
     if (messagesContainer) {
@@ -271,7 +238,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Export des fonctions pour utilisation dans l'application principale
 window.messageEditor = {
-    toggleLanguage,
     addEditButton,
     startEditMessage,
     cancelEdit,

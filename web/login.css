@@ -359,6 +359,155 @@ body.light-theme {
     box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
 }
 
+/* ============================================================================
+   Lang Selector (Dropdown)
+   ============================================================================ */
+.lang-selector {
+    position: fixed;
+    top: 2rem;
+    left: 2rem;
+    z-index: 10;
+}
+
+.lang-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    box-shadow: var(--shadow-lg);
+}
+
+.lang-toggle:hover {
+    background: var(--bg-hover);
+    border-color: var(--cyan);
+    transform: translateY(-2px);
+}
+
+.lang-toggle #langFlag {
+    font-size: 1.2rem;
+    line-height: 1;
+}
+
+.lang-toggle #langText {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.lang-dropdown {
+    display: none;
+    flex-direction: column;
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    left: 0;
+    min-width: 180px;
+    max-height: 320px;
+    overflow-y: auto;
+    margin: 0;
+    padding: 0.5rem;
+    list-style: none;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    z-index: 1000;
+}
+
+.lang-dropdown.open {
+    display: flex;
+}
+
+.lang-dropdown li {
+    display: block;
+}
+
+.lang-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    background: none;
+    border: none;
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    text-align: left;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.lang-option:hover {
+    background: var(--bg-hover);
+}
+
+.lang-option.active {
+    background: var(--bg-hover);
+    color: var(--cyan);
+    font-weight: 600;
+}
+
+.lang-option-flag {
+    font-size: 1.2rem;
+    line-height: 1;
+}
+
+.lang-option-name {
+    flex: 1;
+}
+
+@media (max-width: 640px) {
+    .theme-toggle {
+        top: 1rem;
+        right: 1rem;
+    }
+
+    .lang-selector {
+        top: 1rem;
+        left: 1rem;
+    }
+}
+
+/* ============================================================================
+   RTL SUPPORT (Arabic)
+   ============================================================================ */
+html[dir="rtl"] {
+    direction: rtl;
+}
+
+html[dir="rtl"] .theme-toggle {
+    right: auto;
+    left: 2rem;
+}
+
+html[dir="rtl"] .lang-selector {
+    left: auto;
+    right: 2rem;
+}
+
+html[dir="rtl"] .lang-dropdown {
+    left: auto;
+    right: 0;
+}
+
+html[dir="rtl"] .lang-option {
+    text-align: right;
+}
+
+html[dir="rtl"] .toggle-password {
+    right: auto;
+    left: 1rem;
+}
+
 /* Configuration TOTP (H-05) */
 .hidden {
     display: none !important;

@@ -70,13 +70,11 @@ function fallbackCopyMethod(text) {
 
 // Méthodes UI attachées à LLMUIApp
 LLMUIApp.prototype.setupEventListeners = function() {
-    // Language toggle
-    document.getElementById('langToggle')?.addEventListener('click', () => {
-        const newLang = this.i18n.currentLang === 'fr' ? 'en' : 'fr';
-        this.i18n.setLanguage(newLang);
+    // Refresh language-dependent dynamic text when the language selector changes
+    document.addEventListener('llmui:languagechange', () => {
         this.updateTimeoutInfo();
     });
-    
+
     // Mode switching
     document.getElementById('modeSimple')?.addEventListener('click', () => {
         this.switchMode('simple');
@@ -235,11 +233,7 @@ LLMUIApp.prototype.toggleConfigPanel = function() {
         // Mettre à jour le texte selon la langue
         const isCollapsed = configPanel.classList.contains('collapsed');
         if (panelText) {
-            if (this.i18n.currentLang === 'fr') {
-                panelText.textContent = isCollapsed ? 'Ouvrir le panneau' : 'Fermer le panneau';
-            } else {
-                panelText.textContent = isCollapsed ? 'Open panel' : 'Close panel';
-            }
+            panelText.textContent = isCollapsed ? this.i18n.t('open_panel') : this.i18n.t('close_panel');
         }
         fabBtn.title = panelText ? panelText.textContent : '';
     }
