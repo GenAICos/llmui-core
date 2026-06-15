@@ -1,5 +1,5 @@
 /**
- * LLMUI Core v2.0 - Custom Dialog System
+ * LLMUI Core v1.0.0 - Custom Dialog System
  * Author: François Chalut
  * Website: https://llmui.org
  * 
