@@ -9,6 +9,14 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### 🛠️ Ajouté — Réinitialisation TOTP en ligne de commande
+
+- `scripts/reset_totp.py` : supprime l'enrôlement TOTP d'un compte (par courriel)
+  pour débloquer un administrateur — secret devenu indéchiffrable, perte de
+  l'application d'authentification, etc. Au prochain login, le QR de
+  configuration est redemandé. `DATABASE_URL` est lu depuis l'environnement ou
+  le `.env` de déploiement.
+
 ### 🐛 Corrigé — Activation TOTP en erreur 500 (clé de chiffrement non persistée)
 
 - `_bootstrap_runtime_config` / `_get_or_create_secret` : la `totp_encryption_key`
