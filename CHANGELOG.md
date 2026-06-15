@@ -9,6 +9,20 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### 🐛 Corrigé — Activation TOTP en erreur 500 (clé de chiffrement non persistée)
+
+- `_bootstrap_runtime_config` / `_get_or_create_secret` : la `totp_encryption_key`
+  (et la `session_secret_key`) étaient écrites via un simple `UPDATE` qui ne
+  persistait **rien** si la ligne `system_config` n'existait pas. La clé était
+  alors **régénérée à chaque démarrage**, rendant indéchiffrables les secrets
+  TOTP déjà chiffrés → `POST /api/auth/totp/activate` renvoyait **500** après un
+  redémarrage. Remplacé par un `INSERT … ON CONFLICT … DO UPDATE` atomique suivi
+  d'une relecture : la clé est créée si besoin, jamais remplacée une fois fixée,
+  et tous les processus/redémarrages convergent vers la même valeur.
+- Déchiffrement TOTP impossible : au lieu d'un cul-de-sac 500, le login route
+  désormais l'utilisateur (déjà authentifié par mot de passe) vers un
+  **réenrôlement TOTP automatique** ; `activate` renvoie un 409 explicite.
+
 ### 🔐 Ajouté — QR code TOTP & correctif de vérification
 
 - **QR code à l'enrôlement TOTP** : `/api/auth/totp/setup` renvoie désormais un
