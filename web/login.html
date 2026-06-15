@@ -7,7 +7,15 @@
     <link rel="stylesheet" href="login.css">
 </head>
 <body>
-    <button class="theme-toggle" id="themeToggle" title="Basculer le thème">🌙</button>
+    <button class="theme-toggle" id="themeToggle" data-i18n-title="toggle_theme" title="Basculer le thème">🌙</button>
+
+    <div class="lang-selector" id="langSelector">
+        <button class="lang-toggle" id="langToggle" data-i18n-title="toggle_language" title="Changer de langue" aria-haspopup="listbox" aria-expanded="false">
+            <span id="langFlag">🇫🇷</span>
+            <span id="langText">FR</span>
+        </button>
+        <ul class="lang-dropdown" id="langDropdown" role="listbox"></ul>
+    </div>
 
     <div class="login-container">
         <div class="logo-section">
@@ -15,13 +23,13 @@
                 <img src="../images/Icon-Only-White.png" alt="LLMUI Core">
             </div>
             <div class="logo-title">LLMUI Core</div>
-            <div class="logo-subtitle">Interface de Consensus Multi-Modèles</div>
+            <div class="logo-subtitle" data-i18n="login_app_subtitle">Interface de Consensus Multi-Modèles</div>
         </div>
 
         <div class="login-card">
             <div class="login-header">
-                <h2>🔐 Connexion</h2>
-                <p>Connectez-vous à votre compte LLMUI</p>
+                <h2 data-i18n="login_heading">🔐 Connexion</h2>
+                <p data-i18n="login_subtitle">Connectez-vous à votre compte LLMUI</p>
             </div>
 
             <div class="alert alert-error" id="errorAlert">
@@ -36,31 +44,33 @@
 
             <form id="loginForm">
                 <div class="form-group">
-                    <label class="form-label" for="username">
+                    <label class="form-label" for="username" data-i18n="login_username_label">
                         👤 Nom d'utilisateur
                     </label>
-                    <input 
-                        type="text" 
-                        class="form-input" 
-                        id="username" 
+                    <input
+                        type="text"
+                        class="form-input"
+                        id="username"
                         name="username"
                         placeholder="Entrez votre nom d'utilisateur"
+                        data-i18n-placeholder="login_username_placeholder"
                         required
                         autocomplete="username"
                     >
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label" for="password">
+                    <label class="form-label" for="password" data-i18n="login_password_label">
                         🔑 Mot de passe
                     </label>
                     <div class="password-wrapper">
-                        <input 
-                            type="password" 
-                            class="form-input" 
-                            id="password" 
+                        <input
+                            type="password"
+                            class="form-input"
+                            id="password"
                             name="password"
                             placeholder="Entrez votre mot de passe"
+                            data-i18n-placeholder="login_password_placeholder"
                             required
                             autocomplete="current-password"
                         >
@@ -72,11 +82,11 @@
 
                 <div class="remember-me">
                     <input type="checkbox" id="rememberMe" name="rememberMe">
-                    <label for="rememberMe">Se souvenir de moi</label>
+                    <label for="rememberMe" data-i18n="login_remember_me">Se souvenir de moi</label>
                 </div>
 
                 <div class="form-group hidden" id="totpGroup">
-                    <label class="form-label" for="totpCode">
+                    <label class="form-label" for="totpCode" data-i18n="login_totp_label">
                         🔢 Code de vérification
                     </label>
                     <input
@@ -85,70 +95,73 @@
                         id="totpCode"
                         name="totpCode"
                         placeholder="123456"
+                        data-i18n-placeholder="login_totp_placeholder"
                         inputmode="numeric"
                         autocomplete="one-time-code"
                         maxlength="10"
                     >
-                    <p class="form-hint">Code à 6 chiffres de votre application d'authentification, ou un code de récupération.</p>
+                    <p class="form-hint" data-i18n="login_totp_hint">Code à 6 chiffres de votre application d'authentification, ou un code de récupération.</p>
                 </div>
 
-                <button type="submit" class="login-button" id="loginButton">
+                <button type="submit" class="login-button" id="loginButton" data-i18n="login_button">
                     Se connecter
                 </button>
             </form>
 
             <div class="totp-setup hidden" id="totpSetup">
-                <h3 class="totp-setup-title">🔐 Configuration TOTP requise</h3>
-                <p class="totp-setup-desc">Votre compte administrateur nécessite une authentification à deux facteurs.</p>
+                <h3 class="totp-setup-title" data-i18n="totp_setup_heading">🔐 Configuration TOTP requise</h3>
+                <p class="totp-setup-desc" data-i18n="totp_setup_desc">Votre compte administrateur nécessite une authentification à deux facteurs.</p>
 
                 <div class="totp-step">
-                    <p class="totp-step-title">1. Scannez ce QR code avec votre application d'authentification (Google Authenticator, Authy, etc.)</p>
+                    <p class="totp-step-title" data-i18n="totp_step1_title">1. Scannez ce QR code avec votre application d'authentification (Google Authenticator, Authy, etc.)</p>
                     <div class="totp-qr-box hidden" id="totpQrBox">
-                        <img id="totpQrCode" alt="QR code de configuration TOTP" width="200" height="200">
+                        <img id="totpQrCode" alt="QR code de configuration TOTP" data-i18n-alt="totp_qr_alt" width="200" height="200">
                     </div>
-                    <p class="totp-step-subtitle">Ou entrez cette clé manuellement :</p>
+                    <p class="totp-step-subtitle" data-i18n="totp_step1_sub">Ou entrez cette clé manuellement :</p>
                     <div class="totp-secret-box">
                         <code id="totpSecret"></code>
                         <button type="button" class="copy-btn" id="copyTotpSecret" title="Copier la clé">📋</button>
                     </div>
-                    <a id="totpUriLink" class="totp-uri-link" href="#" target="_blank" rel="noopener noreferrer">Ouvrir dans l'application d'authentification</a>
+                    <a id="totpUriLink" class="totp-uri-link" href="#" target="_blank" rel="noopener noreferrer" data-i18n="totp_open_app_link">Ouvrir dans l'application d'authentification</a>
                 </div>
 
                 <div class="totp-step">
-                    <p class="totp-step-title">2. Conservez ces codes de récupération en lieu sûr</p>
+                    <p class="totp-step-title" data-i18n="totp_step2_title">2. Conservez ces codes de récupération en lieu sûr</p>
                     <ul class="totp-recovery-codes" id="totpRecoveryCodes"></ul>
-                    <p class="form-hint">Chaque code n'est utilisable qu'une seule fois en cas de perte de votre application d'authentification.</p>
+                    <p class="form-hint" data-i18n="totp_step2_hint">Chaque code n'est utilisable qu'une seule fois en cas de perte de votre application d'authentification.</p>
                 </div>
 
                 <div class="totp-step">
-                    <p class="totp-step-title">3. Entrez le code généré pour activer la protection</p>
+                    <p class="totp-step-title" data-i18n="totp_step3_title">3. Entrez le code généré pour activer la protection</p>
                     <div class="form-group">
                         <input
                             type="text"
                             class="form-input"
                             id="totpActivateCode"
                             placeholder="123456"
+                            data-i18n-placeholder="login_totp_placeholder"
                             inputmode="numeric"
                             autocomplete="one-time-code"
                             maxlength="6"
                         >
                     </div>
-                    <button type="button" class="login-button" id="totpActivateButton">
+                    <button type="button" class="login-button" id="totpActivateButton" data-i18n="totp_activate_button">
                         Activer le TOTP
                     </button>
                 </div>
             </div>
 
             <div class="footer-links">
-                <a href="#" id="forgotPassword">Mot de passe oublié ?</a>
+                <a href="#" id="forgotPassword" data-i18n="login_forgot_password">Mot de passe oublié ?</a>
             </div>
         </div>
 
-        <div class="version-info">
+        <div class="version-info" data-i18n="login_version_info">
             LLMUI Core v1.0.0 • Connexion sécurisée
         </div>
     </div>
 
+    <script src="i18n.js"></script>
     <script src="auth.js"></script>
 </body>
 </html>

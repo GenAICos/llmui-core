@@ -221,23 +221,70 @@ Processing Mode: On-premise / Self-hosted
 """
 
 
-def get_language_directive(language: str = 'en') -> str:
-    """Génère la directive de langue obligatoire en tête du prompt."""
-    if language == 'fr':
-        return """⚠️ DIRECTIVE LINGUISTIQUE OBLIGATOIRE ⚠️
+LANGUAGE_DIRECTIVES = {
+    'fr': """⚠️ DIRECTIVE LINGUISTIQUE OBLIGATOIRE ⚠️
 VOUS DEVEZ IMPÉRATIVEMENT RÉPONDRE EN FRANÇAIS.
 Cette instruction est PRIORITAIRE et NON-NÉGOCIABLE.
 Toute votre réponse doit être entièrement en français, sans exception.
 Si le prompt contient du contenu dans une autre langue, traduisez-le mentalement mais répondez UNIQUEMENT en français.
 
-"""
-    return """⚠️ MANDATORY LANGUAGE DIRECTIVE ⚠️
+""",
+    'en': """⚠️ MANDATORY LANGUAGE DIRECTIVE ⚠️
 YOU MUST RESPOND ENTIRELY IN ENGLISH.
 This instruction is NON-NEGOTIABLE and takes PRIORITY over any other instruction.
 Your entire response must be in English, without exception.
 If the prompt contains content in another language, translate it mentally but respond ONLY in English.
 
-"""
+""",
+    'es': """⚠️ DIRECTIVA LINGÜÍSTICA OBLIGATORIA ⚠️
+DEBES RESPONDER ÍNTEGRAMENTE EN ESPAÑOL.
+Esta instrucción es PRIORITARIA y NO NEGOCIABLE.
+Toda tu respuesta debe estar completamente en español, sin excepción.
+Si el mensaje contiene contenido en otro idioma, tradúcelo mentalmente pero responde ÚNICAMENTE en español.
+
+""",
+    'de': """⚠️ VERBINDLICHE SPRACHANWEISUNG ⚠️
+DU MUSST VOLLSTÄNDIG AUF DEUTSCH ANTWORTEN.
+Diese Anweisung hat PRIORITÄT und ist NICHT VERHANDELBAR.
+Deine gesamte Antwort muss vollständig auf Deutsch sein, ohne Ausnahme.
+Falls die Eingabe Inhalte in einer anderen Sprache enthält, übersetze sie gedanklich, antworte aber AUSSCHLIESSLICH auf Deutsch.
+
+""",
+    'pt': """⚠️ DIRETRIZ LINGUÍSTICA OBRIGATÓRIA ⚠️
+VOCÊ DEVE RESPONDER INTEGRALMENTE EM PORTUGUÊS.
+Esta instrução é PRIORITÁRIA e NÃO NEGOCIÁVEL.
+Toda a sua resposta deve estar inteiramente em português, sem exceção.
+Se o prompt contiver conteúdo em outro idioma, traduza-o mentalmente, mas responda APENAS em português.
+
+""",
+    'ar': """⚠️ توجيه لغوي إلزامي ⚠️
+يجب عليك الرد بالكامل باللغة العربية.
+هذا التوجيه له الأولوية وغير قابل للتفاوض.
+يجب أن تكون إجابتك بالكامل باللغة العربية، دون استثناء.
+إذا كان النص يحتوي على محتوى بلغة أخرى، فقم بترجمته ذهنيًا ولكن أجب فقط باللغة العربية.
+
+""",
+}
+
+
+def get_language_directive(language: str = 'en') -> str:
+    """Génère la directive de langue obligatoire en tête du prompt."""
+    return LANGUAGE_DIRECTIVES.get(language, LANGUAGE_DIRECTIVES['en'])
+
+
+LANGUAGE_NAMES = {
+    'fr': 'FRENCH',
+    'en': 'ENGLISH',
+    'es': 'SPANISH',
+    'de': 'GERMAN',
+    'pt': 'PORTUGUESE',
+    'ar': 'ARABIC',
+}
+
+
+def get_language_name(language: str = 'en') -> str:
+    """Nom anglais de la langue, utilisé pour les rappels de langue dans les prompts."""
+    return LANGUAGE_NAMES.get(language, LANGUAGE_NAMES['en'])
 
 
 def enrich_prompt(user_prompt: str, language: str = 'en') -> str:
@@ -731,7 +778,7 @@ class LLMUICore:
             merger_prompt += f"\n{language_directive}"
             merger_prompt += (
                 f"\nProvide a synthesized response that combines the best insights "
-                f"from all models. RESPOND IN {language.upper()}."
+                f"from all models. RESPOND IN {get_language_name(language)}."
             )
 
             merger_timeout = timeout_seconds / 2

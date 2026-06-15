@@ -132,6 +132,48 @@ body {
     color: var(--text-primary);
 }
 
+/* ============================================================================
+   RTL SUPPORT (Arabic)
+   ============================================================================ */
+html[dir="rtl"] {
+    direction: rtl;
+}
+
+html[dir="rtl"] .lang-dropdown {
+    right: auto;
+    left: 0;
+}
+
+html[dir="rtl"] .lang-option {
+    text-align: right;
+}
+
+html[dir="rtl"] .message.llmui,
+html[dir="rtl"] .consensus-info {
+    text-align: right;
+}
+
+html[dir="rtl"] .message.user .message-content,
+html[dir="rtl"] .message.assistant .message-content {
+    border-left: none;
+    padding-left: 0;
+}
+
+html[dir="rtl"] .message.user .message-content {
+    border-right: 4px solid var(--primary);
+    padding-right: 1rem;
+}
+
+html[dir="rtl"] .message.assistant .message-content {
+    border-right: 4px solid #22c55e;
+    padding-right: 1rem;
+}
+
+html[dir="rtl"] .message-time {
+    margin-left: 0;
+    margin-right: auto;
+}
+
 @media (width: 1366px) and (height: 768px) {
     body {
         overflow: hidden;

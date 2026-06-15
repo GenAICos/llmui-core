@@ -10,6 +10,10 @@ class AuthManager {
     }
 
     init() {
+        // Internationalization
+        this.i18n = new I18n();
+        this.i18n.updateUI();
+
         // Theme management
         this.loadTheme();
         this.setupThemeToggle();
@@ -77,7 +81,7 @@ class AuthManager {
         if (forgotPassword) {
             forgotPassword.addEventListener('click', (e) => {
                 e.preventDefault();
-                this.showAlert('info', 'Contactez l\'administrateur système pour réinitialiser votre mot de passe.');
+                this.showAlert('info', this.i18n.t('auth_forgot_password_msg'));
             });
         }
     }
@@ -152,13 +156,13 @@ class AuthManager {
 
         // Validation
         if (!username || !password) {
-            this.showAlert('error', 'Veuillez remplir tous les champs');
+            this.showAlert('error', this.i18n.t('auth_fill_fields'));
             return;
         }
 
         // Disable button and show loading
         loginButton.disabled = true;
-        loginButton.innerHTML = '<span class="loading-spinner"></span>Connexion en cours...';
+        loginButton.innerHTML = '<span class="loading-spinner"></span>' + this.i18n.t('login_button_loading');
 
         try {
             const credentials = { username, password, rememberMe };
@@ -188,13 +192,13 @@ class AuthManager {
                 console.warn('Réponse non-JSON reçue:', text);
                 data = {
                     success: false,
-                    message: response.ok ? 'Réponse serveur invalide' : 'Nom d\'utilisateur ou mot de passe incorrect'
+                    message: response.ok ? this.i18n.t('auth_invalid_server_response') : this.i18n.t('auth_invalid_credentials')
                 };
             }
 
             if (response.ok && data.success) {
                 // Login successful (200 OK)
-                this.showAlert('success', 'Connexion réussie ! Redirection...');
+                this.showAlert('success', this.i18n.t('auth_login_success'));
 
                 // Store user info in localStorage if remember me is checked
                 if (rememberMe) {
@@ -218,18 +222,18 @@ class AuthManager {
             // Code TOTP requis (admin déjà configuré) — H-05
             if (data.totp_required) {
                 this.showTotpInput();
-                this.showAlert('error', data.message || 'Veuillez entrer votre code de vérification.');
+                this.showAlert('error', data.message || this.i18n.t('auth_totp_enter_code'));
                 this.resetLoginButton(loginButton);
                 return;
             }
 
             // Login failed
-            const message = data.message || 'Nom d\'utilisateur ou mot de passe incorrect';
+            const message = data.message || this.i18n.t('auth_invalid_credentials');
             this.showAlert('error', message);
             this.resetLoginButton(loginButton);
         } catch (error) {
             console.error('Login error:', error);
-            this.showAlert('error', 'Erreur de connexion au serveur. Veuillez réessayer.');
+            this.showAlert('error', this.i18n.t('auth_server_error'));
             this.resetLoginButton(loginButton);
         }
     }
@@ -238,7 +242,7 @@ class AuthManager {
         const totpGroup = document.getElementById('totpGroup');
         const totpVisible = totpGroup && !totpGroup.classList.contains('hidden');
         loginButton.disabled = false;
-        loginButton.innerHTML = totpVisible ? 'Vérifier' : 'Se connecter';
+        loginButton.innerHTML = totpVisible ? this.i18n.t('login_verify_button') : this.i18n.t('login_button');
     }
 
     showTotpInput() {
@@ -265,14 +269,14 @@ class AuthManager {
                 : null;
 
             if (!response.ok || !data || !data.success) {
-                this.showAlert('error', 'Impossible d\'initialiser la configuration TOTP. Veuillez réessayer.');
+                this.showAlert('error', this.i18n.t('auth_totp_setup_failed'));
                 return;
             }
 
             this.displayTotpSetup(data);
         } catch (error) {
             console.error('TOTP setup error:', error);
-            this.showAlert('error', 'Erreur de connexion au serveur. Veuillez réessayer.');
+            this.showAlert('error', this.i18n.t('auth_server_error'));
         }
     }
 
@@ -328,12 +332,12 @@ class AuthManager {
         const code = codeInput ? codeInput.value.trim() : '';
 
         if (!/^\d{6}$/.test(code)) {
-            this.showAlert('error', 'Le code doit contenir 6 chiffres.');
+            this.showAlert('error', this.i18n.t('auth_totp_code_digits'));
             return;
         }
 
         activateButton.disabled = true;
-        activateButton.innerHTML = '<span class="loading-spinner"></span>Activation en cours...';
+        activateButton.innerHTML = '<span class="loading-spinner"></span>' + this.i18n.t('totp_activate_loading');
 
         try {
             const response = await fetch('/api/auth/totp/activate', {
@@ -351,22 +355,22 @@ class AuthManager {
                 : null;
 
             if (response.ok && data && data.success) {
-                this.showAlert('success', 'TOTP activé ! Redirection...');
+                this.showAlert('success', this.i18n.t('auth_totp_activated'));
                 setTimeout(() => {
                     window.location.href = '/index.html';
                 }, 1000);
                 return;
             }
 
-            const message = (data && (data.message || data.detail)) || 'Code TOTP invalide';
+            const message = (data && (data.message || data.detail)) || this.i18n.t('auth_totp_invalid');
             this.showAlert('error', message);
             activateButton.disabled = false;
-            activateButton.innerHTML = 'Activer le TOTP';
+            activateButton.innerHTML = this.i18n.t('totp_activate_button');
         } catch (error) {
             console.error('TOTP activate error:', error);
-            this.showAlert('error', 'Erreur de connexion au serveur. Veuillez réessayer.');
+            this.showAlert('error', this.i18n.t('auth_server_error'));
             activateButton.disabled = false;
-            activateButton.innerHTML = 'Activer le TOTP';
+            activateButton.innerHTML = this.i18n.t('totp_activate_button');
         }
     }
 

@@ -61,11 +61,14 @@
                     <div class="logo-text">LLMUI Core</div>
                 </div>
                 <div class="header-controls">
-                    <!-- Bouton de changement de langue -->
-                    <button class="lang-toggle" id="langToggle" data-i18n-title="toggle_language" title="Changer de langue">
-                        <span id="langFlag">🇫🇷</span>
-                        <span id="langText">FR</span>
-                    </button>
+                    <!-- Sélecteur de langue -->
+                    <div class="lang-selector" id="langSelector">
+                        <button class="lang-toggle" id="langToggle" data-i18n-title="toggle_language" title="Changer de langue" aria-haspopup="listbox" aria-expanded="false">
+                            <span id="langFlag">🇫🇷</span>
+                            <span id="langText">FR</span>
+                        </button>
+                        <ul class="lang-dropdown" id="langDropdown" role="listbox"></ul>
+                    </div>
                     <!-- Logout button will be inserted here by session-guard.js -->
                     <button class="theme-toggle" id="themeToggle" data-i18n-title="toggle_theme" title="Basculer le thème">🌙</button>
                     <div class="status-indicator">
