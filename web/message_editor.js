@@ -224,7 +224,7 @@ function showNotification(message, type = 'info') {
     const colors = {
         info: '#aeb910',
         success: '#10b940',
-        warning: '#10b981',
+        warning: '#22c55e',
         error: '#b92f10'
     };
     

@@ -61,7 +61,7 @@ function showNotification(message, type = 'info') {
     // Styles
     const colors = {
         info: '#3b82f6',
-        success: '#10b981',
+        success: '#22c55e',
         warning: '#f59e0b',
         error: '#ef4444'
     };

@@ -7,6 +7,22 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ---
 
+## [Non publié]
+
+### 🎨 Modifié — Harmonisation visuelle avec LLMUI Entreprise
+
+Thème web aligné sur l'identité Technologies Nexios TF (LLMUI Entreprise) :
+
+- Couleur primaire : bleu `#3b82f6` → **indigo `#6366f1`** (survol `#4f46e5`)
+- Accent secondaire : cyan `#06b6d4` → **indigo clair `#818cf8`** / **violet `#a855f7`**
+- Dégradé de marque (logo header, boutons d'action, widget Andy) : cyan→bleu → **indigo→violet**
+- Succès : `#10b981` → `#22c55e` ; fond bulle utilisateur : `#21324e` → indigo profond `#1e1b4b`
+- `variables.css` : palettes sombre et claire réécrites ; ajout de `--gradient-1` (dégradé de marque), `--violet` et `--primary-dark`
+- Remplacement des couleurs codées en dur dans l'ensemble des CSS (`chat`, `layout`, `andy`, `login`, `config`, `dialog-system`, `edit_buttons`, `model-selection`, `base`) et de quelques styles JS (`utils.js`, `ui.js`, `message_editor.js`)
+- Les fonds slate (`#0f172a` / `#1e293b` / `#334155`) étaient déjà alignés et sont conservés
+
+---
+
 ## [1.0.0] - 2026-06-09
 
 ### 🎉 Première version stable — Technologies Nexios TF Inc.
