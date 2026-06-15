@@ -1,0 +1,69 @@
+<!-- Section Statistiques -->
+<div class="section-header">
+  <h2 class="section-title" data-i18n="stats.title">Statistiques</h2>
+  <div style="display:flex;gap:0.5rem">
+    <a href="/export/csv/stats" class="btn btn-ghost btn-sm">📊 CSV</a>
+  </div>
+</div>
+
+<!-- Sélecteur de période -->
+<div class="filter-bar mb-2">
+  <span class="text-muted" style="font-size:0.85rem" data-i18n="stats.period">Période :</span>
+  <button class="btn btn-ghost btn-sm period-btn" data-period="jour" data-i18n="stats.day">Jour</button>
+  <button class="btn btn-ghost btn-sm period-btn" data-period="semaine" data-i18n="stats.week">Semaine</button>
+  <button class="btn btn-primary btn-sm period-btn active" data-period="mois" data-i18n="stats.month">Mois</button>
+  <button class="btn btn-ghost btn-sm period-btn" data-period="annee" data-i18n="stats.year">Année</button>
+</div>
+
+<!-- Tableau récapitulatif -->
+<div class="summary-grid" style="padding:0;margin-bottom:1.25rem">
+  <div class="summary-card">
+    <div class="label" data-i18n="stats.revenue">Revenu</div>
+    <div class="value text-green" id="stats-revenue">—</div>
+  </div>
+  <div class="summary-card">
+    <div class="label" data-i18n="stats.fixed">Paiements fixes</div>
+    <div class="value text-blue" id="stats-payments">—</div>
+  </div>
+  <div class="summary-card">
+    <div class="label" data-i18n="stats.variable">Dépenses variables</div>
+    <div class="value text-amber" id="stats-expenses">—</div>
+  </div>
+  <div class="summary-card">
+    <div class="label" data-i18n="stats.balance">Solde</div>
+    <div class="value" id="stats-balance">—</div>
+  </div>
+</div>
+
+<!-- % épargné -->
+<div style="text-align:right;margin-bottom:1rem">
+  <span class="text-muted" data-i18n="stats.saved_pct">% épargné : </span>
+  <span class="value" id="stats-saved-pct" style="font-size:1.5rem;font-weight:800">—</span>
+</div>
+
+<!-- Graphiques -->
+<div class="charts-grid">
+  <!-- Donut répartition -->
+  <div class="chart-container">
+    <h4 class="mb-1" data-i18n="stats.donut">Répartition du budget</h4>
+    <canvas id="chart-donut"></canvas>
+  </div>
+
+  <!-- Répartition par catégorie -->
+  <div class="chart-container">
+    <h4 class="mb-1" data-i18n="avg.by_cat">Par catégorie</h4>
+    <canvas id="chart-categories"></canvas>
+  </div>
+
+  <!-- Évolution 12 mois -->
+  <div class="chart-container" style="grid-column: 1 / -1">
+    <h4 class="mb-1" data-i18n="stats.evolution">Évolution des dépenses (12 mois)</h4>
+    <canvas id="chart-evolution"></canvas>
+  </div>
+
+  <!-- Dettes -->
+  <div class="chart-container" style="grid-column: 1 / -1" id="chart-dettes-wrap">
+    <h4 class="mb-1" data-i18n="stats.debts">Progression des remboursements</h4>
+    <canvas id="chart-dettes"></canvas>
+  </div>
+</div>

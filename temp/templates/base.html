@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="{{ request.cookies.get('lang', 'fr') }}">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-F5J998NN9M"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+  
+    gtag('config', 'G-F5J998NN9M');
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}FinanceFamille{% endblock %} — {{ app_name | default('FinanceFamille') }}</title>
+  <meta name="description" content="FinanceFamille — Gestionnaire de budget familial multi-membre pensé pour les familles québécoises. Par Technologies Nexios TF Inc.">
+  <meta name="theme-color" content="#3b82f6">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FinanceFamille">
+  <link rel="icon" type="image/x-icon" href="/static/icons/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/icons/favicon-16x16.png">
+  <link rel="shortcut icon" href="/static/icons/favicon.ico">
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script>(function(){var t=localStorage.getItem("financefamille_theme")||"dark";document.documentElement.setAttribute("data-theme",t);})();</script>
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+{% block body %}{% endblock %}
+
+<div id="toast-container"></div>
+
+<!-- PWA Install Prompt -->
+<div id="pwa-install-banner" style="display:none;position:fixed;bottom:1.25rem;left:50%;transform:translateX(-50%);z-index:9999;background:var(--card-bg,#1e293b);border:1px solid var(--border,#334155);border-radius:0.75rem;padding:0.875rem 1.25rem;display:none;align-items:center;gap:1rem;box-shadow:0 8px 32px rgba(0,0,0,.4);max-width:360px;width:calc(100% - 2rem);">
+  <img src="/static/icons/icon-192.png" alt="FinanceFamille" style="width:40px;height:40px;border-radius:0.5rem;flex-shrink:0;">
+  <div style="flex:1;min-width:0;">
+    <div style="font-weight:600;font-size:0.9rem;color:var(--text-primary,#f1f5f9);">Installer FinanceFamille</div>
+    <div style="font-size:0.78rem;color:var(--text-secondary,#94a3b8);margin-top:2px;">Accès rapide depuis votre écran d'accueil</div>
+  </div>
+  <div style="display:flex;gap:0.5rem;flex-shrink:0;">
+    <button id="pwa-install-btn" style="padding:0.4rem 0.85rem;background:var(--accent,#3b82f6);color:#fff;border:none;border-radius:0.4rem;font-size:0.82rem;font-weight:600;cursor:pointer;">Installer</button>
+    <button id="pwa-dismiss-btn" style="padding:0.4rem 0.6rem;background:transparent;color:var(--text-secondary,#94a3b8);border:1px solid var(--border,#334155);border-radius:0.4rem;font-size:0.82rem;cursor:pointer;" aria-label="Fermer">✕</button>
+  </div>
+</div>
+
+<!-- Chart.js CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"
+        integrity="sha512-SIMGYRUjwY8+gKg7nn9EItdD8LCADSDfJNutF9TPrvEo86sQmFMh6MyralfIyhADlajSxqc7G0gs7+MwWF/ogQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<!-- Scripts FinanceFamille -->
+<script>
+  // Variables globales injectées depuis le serveur
+  window.currencySymbol = "{{ currency_symbol | default('$') | e }}";
+  window.csrfToken = "{{ csrf_token | default('') | e }}";
+</script>
+<script src="/static/js/i18n.js"></script>
+<script src="/static/js/charts.js"></script>
+{% block scripts %}{% endblock %}
+
+<!-- Fabriqué par Technologies Nexios TF Inc. — https://nexiostf.com -->
+<script>
+  // Service Worker + PWA Install Prompt
+  let _pwaPrompt = null;
+
+  window.addEventListener("beforeinstallprompt", e => {
+    e.preventDefault();
+    _pwaPrompt = e;
+    if (!sessionStorage.getItem("pwa-dismissed")) {
+      const banner = document.getElementById("pwa-install-banner");
+      if (banner) banner.style.display = "flex";
+    }
+  });
+
+  document.getElementById("pwa-install-btn")?.addEventListener("click", async () => {
+    if (!_pwaPrompt) return;
+    _pwaPrompt.prompt();
+    const { outcome } = await _pwaPrompt.userChoice;
+    _pwaPrompt = null;
+    document.getElementById("pwa-install-banner").style.display = "none";
+    if (outcome === "accepted") sessionStorage.setItem("pwa-dismissed", "1");
+  });
+
+  document.getElementById("pwa-dismiss-btn")?.addEventListener("click", () => {
+    document.getElementById("pwa-install-banner").style.display = "none";
+    sessionStorage.setItem("pwa-dismissed", "1");
+  });
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    });
+  }
+</script>
+</body>
+</html>

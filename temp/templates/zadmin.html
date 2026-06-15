@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zadmin — FinanceFamille</title>
+  <link rel="icon" type="image/x-icon" href="/static/icons/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/icons/favicon-16x16.png">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script>(function(){var t=localStorage.getItem("financefamille_theme")||"dark";document.documentElement.setAttribute("data-theme",t);})();</script>
+</head>
+<body>
+
+<div class="zadmin-layout">
+
+  <!-- Overlay mobile pour fermer la sidebar -->
+  <div class="zadmin-sidebar-overlay" id="zadmin-overlay" onclick="toggleZadminSidebar()"></div>
+
+  <!-- Sidebar -->
+  <aside class="zadmin-sidebar" id="zadmin-sidebar">
+    <div class="logo">&#9881; Zadmin</div>
+
+    <a class="zadmin-nav-item active" onclick="showSection('config', this); return false;" href="javascript:void(0)">&#9881; Configuration</a>
+    <a class="zadmin-nav-item" onclick="showSection('db', this); return false;" href="javascript:void(0)">&#128451; Base de données</a>
+    <a class="zadmin-nav-item" onclick="showSection('comptes', this); return false;" href="javascript:void(0)">&#128101; Comptes familiaux</a>
+    <a class="zadmin-nav-item" onclick="showSection('system', this); return false;" href="javascript:void(0)">&#128202; Système</a>
+    <a class="zadmin-nav-item" onclick="showSection('whitelist', this); return false;" href="javascript:void(0)">&#128737; Whitelist IP</a>
+    <a class="zadmin-nav-item" onclick="showSection('llm', this); llmLoadModels(); return false;" href="javascript:void(0)">&#129302; LLM (Andy)</a>
+    <a class="zadmin-nav-item" onclick="showSection('support', this); supportLoadTickets(); return false;" href="javascript:void(0)">&#128231; Support</a>
+    {% if '*' in perms or 'users_manage' in perms %}
+    <a class="zadmin-nav-item" onclick="showSection('users', this); return false;" href="javascript:void(0)">&#128100; Utilisateurs</a>
+    {% endif %}
+    {% if '*' in perms or 'groups_manage' in perms %}
+    <a class="zadmin-nav-item" onclick="showSection('groupes', this); return false;" href="javascript:void(0)">&#128101; Groupes</a>
+    {% endif %}
+    <hr style="border-color:var(--border);margin:1rem 0">
+    <div style="padding:0.5rem 1rem;font-size:0.78rem;color:var(--text-muted)">
+      Connecté : <strong>{{ current_user.username }}</strong>
+      {% if current_user.superadmin %}<span class="badge badge-amber" style="font-size:0.7rem">superadmin</span>{% endif %}
+    </div>
+    <a class="zadmin-nav-item" href="/zadmin/totp/setup">&#128274; 2FA TOTP</a>
+    <a class="zadmin-nav-item" href="/">&#8592; Retour à l'app</a>
+    <a class="zadmin-nav-item" href="/zadmin/logout" style="color:var(--accent-red)">&#128682; Déconnexion</a>
+  </aside>
+
+  <!-- Contenu principal -->
+  <main class="zadmin-main">
+    <button class="zadmin-hamburger" onclick="toggleZadminSidebar()" title="Menu">☰</button>
+
+    {% set error = request.query_params.get('error') %}
+    {% set success = request.query_params.get('success') %}
+
+    {% if error %}
+    <div class="alert alert-error">
+      {% if error == 'csrf' %}Erreur de sécurité CSRF. Veuillez réessayer.
+      {% elif error == 'plan_invalide' %}Plan invalide sélectionné.
+      {% elif error == 'compte_introuvable' %}Compte introuvable.
+      {% elif error == 'ip_vide' %}La whitelist ne peut pas être vide.
+      {% elif error and error.startswith('ip_invalide:') %}IP/CIDR invalide : <code>{{ error[12:] }}</code>
+      {% elif error == 'permission_refusee' %}Permission refusée — vous n'avez pas accès à cette action.
+      {% elif error == 'username_existe' %}Ce nom d'utilisateur est déjà pris.
+      {% elif error == 'password_court' %}Le mot de passe doit contenir au moins 8 caractères.
+      {% elif error == 'delete_self' %}Vous ne pouvez pas supprimer votre propre compte.
+      {% elif error == 'dernier_superadmin' %}Impossible de supprimer le dernier superadmin.
+      {% elif error == 'groupe_existe' %}Un groupe avec ce nom existe déjà.
+      {% else %}Une erreur est survenue : {{ error }}
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if success %}
+    <div class="alert alert-success">
+      {% if success == 'config' %}Configuration mise à jour avec succès.
+      {% elif success == 'db_config' %}Configuration PostgreSQL mise à jour avec succès.
+      {% elif success == 'plan_updated' %}Plan du compte mis à jour avec succès.
+      {% elif success == 'compte_toggled' %}Statut du compte modifié avec succès.
+      {% elif success == 'ip_whitelist' %}Whitelist IP mise à jour avec succès.
+      {% elif success == 'user_created' %}Utilisateur créé avec succès.
+      {% elif success == 'user_updated' %}Utilisateur mis à jour avec succès.
+      {% elif success == 'user_deleted' %}Utilisateur supprimé.
+      {% elif success == 'groupe_created' %}Groupe créé avec succès.
+      {% elif success == 'groupe_updated' %}Groupe mis à jour avec succès.
+      {% elif success == 'groupe_deleted' %}Groupe supprimé.
+      {% elif success == 'llm_config' %}Configuration LLM sauvegardée avec succès.
+      {% else %}Opération réussie.
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- ══ Section Configuration ══════════════════════════════════════ -->
+    <div class="zadmin-section active" id="section-config">
+      <h2 style="margin-bottom:1.5rem">&#9881; Configuration applicative</h2>
+
+      {% set categories = [
+        ('🔒 Sécurité', ['secret_key', 'session_expire_hours', 'rate_limit_attempts', 'rate_limit_window_seconds', 'admin_password_hash']),
+        ('📧 Email SMTP', ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from']),
+        ('💰 Devise & Affichage', ['app_name', 'currency', 'currency_symbol', 'app_url']),
+        ('💳 Tarification', ['essai_jours', 'prix_mensuel', 'prix_annuel', 'stripe_public_key', 'stripe_secret_key', 'stripe_webhook_secret', 'stripe_price_mensuel', 'stripe_price_annuel']),
+        ('🏦 Flinks (connexion bancaire)', ['flinks_customer_id', 'flinks_instance_id', 'flinks_api_key', 'flinks_base_url', 'flinks_widget_url', 'flinks_days_history']),
+        ('📄 Chemins', ['log_path', 'export_path']),
+        ('🎧 Support', ['support_email_from', 'support_email_to']),
+      ] %}
+
+      {% for cat_title, cat_keys in categories %}
+      <div class="card mb-2">
+        <h4 style="margin-bottom:1rem;color:var(--accent-blue)">{{ cat_title }}</h4>
+        {% for item in config_items %}
+        {% if item.key in cat_keys %}
+        <form method="POST" action="/zadmin/config" style="display:flex;gap:0.75rem;align-items:flex-end;margin-bottom:0.75rem;flex-wrap:wrap">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="key" value="{{ item.key }}">
+          <div style="flex:1;min-width:200px">
+            <label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:0.25rem">
+              {% if item.description %}{{ item.description }}{% else %}{{ item.key }}{% endif %}
+            </label>
+            {% if item.key == 'admin_password_hash' %}
+            <input type="password" name="value" placeholder="Nouveau mot de passe (laisser vide pour ne pas changer)" style="width:100%">
+            {% elif item.is_secret %}
+            <input type="password" name="value" value="{{ item.raw_value }}" style="width:100%">
+            {% elif item.key in ['session_expire_hours','rate_limit_attempts','rate_limit_window_seconds','smtp_port','essai_jours'] %}
+            <input type="number" name="value" value="{{ item.raw_value }}" min="1" style="width:100%">
+            {% else %}
+            <input type="text" name="value" value="{{ item.raw_value }}" style="width:100%">
+            {% endif %}
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm">Sauvegarder</button>
+        </form>
+        {% endif %}
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- ══ Section Base de données ════════════════════════════════════ -->
+    <div class="zadmin-section" id="section-db">
+      <h2 style="margin-bottom:1.5rem">&#128451; Configuration PostgreSQL</h2>
+
+      <div class="card mb-2">
+        <h4 style="margin-bottom:1rem;color:var(--accent-blue)">Connexion à la base de données</h4>
+        <p class="text-muted" style="font-size:0.85rem;margin-bottom:1rem">
+          Ces paramètres sont stockés dans <code>/opt/financefamille/data/db_config.json</code>.
+          Un redémarrage peut être nécessaire après modification.
+        </p>
+        <form method="POST" action="/zadmin/db-config">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+            <div class="form-group">
+              <label>Hôte PostgreSQL</label>
+              <input type="text" name="host" value="{{ db_config.host }}" required placeholder="localhost">
+            </div>
+            <div class="form-group">
+              <label>Port</label>
+              <input type="number" name="port" value="{{ db_config.port }}" required min="1" max="65535" placeholder="5432">
+            </div>
+            <div class="form-group">
+              <label>Nom de la base de données</label>
+              <input type="text" name="dbname" value="{{ db_config.dbname }}" required placeholder="financefamille">
+            </div>
+            <div class="form-group">
+              <label>Utilisateur</label>
+              <input type="text" name="user" value="{{ db_config.user }}" required placeholder="financefamille">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Mot de passe (laisser vide si inchangé)</label>
+            <input type="password" name="password" placeholder="••••••••">
+          </div>
+          <button type="submit" class="btn btn-primary">Sauvegarder la configuration DB</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h4 style="margin-bottom:1rem;color:var(--accent-green)">Statut actuel</h4>
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:0.5rem 1rem;font-size:0.9rem">
+          <span class="text-muted">Hôte :</span>        <strong>{{ db_config.host }}:{{ db_config.port }}</strong>
+          <span class="text-muted">Base :</span>         <strong>{{ db_config.dbname }}</strong>
+          <span class="text-muted">Utilisateur :</span>  <strong>{{ db_config.user }}</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ Section Comptes familiaux ══════════════════════════════════ -->
+    <div class="zadmin-section" id="section-comptes">
+      <h2 style="margin-bottom:1.5rem">&#128101; Comptes familiaux</h2>
+
+      <!-- Statistiques rapides -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem">
+        <div class="card" style="text-align:center;padding:1rem">
+          <div class="text-muted" style="font-size:0.8rem">Total comptes</div>
+          <div style="font-size:2rem;font-weight:800;color:var(--accent-blue)">{{ comptes|length }}</div>
+        </div>
+        <div class="card" style="text-align:center;padding:1rem">
+          <div class="text-muted" style="font-size:0.8rem">Comptes actifs</div>
+          <div style="font-size:2rem;font-weight:800;color:var(--accent-green)">{{ comptes|selectattr('actif')|list|length }}</div>
+        </div>
+        <div class="card" style="text-align:center;padding:1rem">
+          <div class="text-muted" style="font-size:0.8rem">Sessions actives</div>
+          <div style="font-size:2rem;font-weight:800;color:var(--accent-amber)">{{ sessions_count }}</div>
+        </div>
+      </div>
+
+      <!-- Table des comptes -->
+      <div class="card">
+        {% if comptes %}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Famille</th>
+                <th>Email admin</th>
+                <th>Plan</th>
+                <th>Membres</th>
+                <th>Trial fin</th>
+                <th>Statut</th>
+                <th>Créé le</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for c in comptes %}
+              <tr>
+                <td class="text-muted">{{ c.id }}</td>
+                <td><strong>{{ c.nom }}</strong></td>
+                <td class="text-muted">{{ c.email_admin }}</td>
+                <td>
+                  <span class="badge badge-{% if c.plan == 'annuel' %}green{% elif c.plan == 'mensuel' %}blue{% else %}amber{% endif %}">
+                    {{ c.plan }}
+                  </span>
+                </td>
+                <td class="text-center">
+                  {{ c.nb_membres }} / {{ c.max_membres if c.max_membres else 6 }}
+                  {% if c.nb_membres >= (c.max_membres if c.max_membres else 6) %}
+                  <span class="badge badge-red" style="font-size:0.7rem">PLEIN</span>
+                  {% endif %}
+                </td>
+                <td class="text-muted" style="font-size:0.8rem">
+                  {{ c.trial_fin.strftime('%Y-%m-%d') if c.trial_fin else '—' }}
+                </td>
+                <td>
+                  {% if c.actif %}
+                  <span class="badge badge-green">Actif</span>
+                  {% else %}
+                  <span class="badge badge-red">Inactif</span>
+                  {% endif %}
+                </td>
+                <td class="text-muted" style="font-size:0.8rem">
+                  {{ c.cree_le.strftime('%Y-%m-%d') if c.cree_le else '—' }}
+                </td>
+                <td style="white-space:nowrap">
+                  <!-- Changer le plan -->
+                  <form method="POST" action="/zadmin/comptes/{{ c.id }}/plan" style="display:inline-flex;gap:0.4rem;align-items:center;margin-right:0.4rem">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <select name="plan" style="font-size:0.78rem;padding:0.25rem 0.4rem">
+                      <option value="trial"   {% if c.plan == 'trial'   %}selected{% endif %}>trial</option>
+                      <option value="mensuel" {% if c.plan == 'mensuel' %}selected{% endif %}>mensuel</option>
+                      <option value="annuel"  {% if c.plan == 'annuel'  %}selected{% endif %}>annuel</option>
+                    </select>
+                    <button type="submit" class="btn btn-primary btn-sm">OK</button>
+                  </form>
+                  <!-- Limite membres -->
+                  <form method="POST" action="/zadmin/comptes/{{ c.id }}/max_membres" style="display:inline-flex;gap:0.4rem;align-items:center;margin-right:0.4rem" title="Limite de membres">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="number" name="max_membres" min="1" max="500"
+                           value="{{ c.max_membres if c.max_membres else 6 }}"
+                           style="width:52px;font-size:0.78rem;padding:0.25rem 0.4rem"
+                           title="Membres max">
+                    <button type="submit" class="btn btn-ghost btn-sm" title="Appliquer la limite">👥</button>
+                  </form>
+                  <!-- Activer / Désactiver -->
+                  <form method="POST" action="/zadmin/comptes/{{ c.id }}/toggle" style="display:inline"
+                        onsubmit="return confirm('{% if c.actif %}Désactiver{% else %}Activer{% endif %} ce compte ?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn {% if c.actif %}btn-warning{% else %}btn-success{% endif %} btn-sm">
+                      {% if c.actif %}Désactiver{% else %}Activer{% endif %}
+                    </button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted text-center" style="padding:1.5rem">Aucun compte familial enregistré.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ══ Section Système ════════════════════════════════════════════ -->
+    <div class="zadmin-section" id="section-system">
+      <h2 style="margin-bottom:1.5rem">&#128202; Informations système</h2>
+      <div class="card">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+          <div>
+            <div class="text-muted" style="font-size:0.8rem">Sessions actives</div>
+            <div style="font-size:1.5rem;font-weight:800;color:var(--accent-green)">{{ sessions_count }}</div>
+          </div>
+          <div>
+            <div class="text-muted" style="font-size:0.8rem">Comptes familiaux</div>
+            <div style="font-size:1.5rem;font-weight:800;color:var(--accent-blue)">{{ comptes|length }}</div>
+          </div>
+          <div>
+            <div class="text-muted" style="font-size:0.8rem">Total membres</div>
+            <div style="font-size:1.5rem;font-weight:800;color:var(--accent-violet)">
+              {{ comptes|sum(attribute='nb_membres') }}
+            </div>
+          </div>
+          <div>
+            <div class="text-muted" style="font-size:0.8rem">Endpoint de santé</div>
+            <a href="/health" target="_blank" class="btn btn-ghost btn-sm" style="margin-top:0.25rem">/health</a>
+          </div>
+          <div>
+            <div class="text-muted" style="font-size:0.8rem">Application</div>
+            <div style="font-weight:700">FinanceFamille v1.0 — SaaS multi-tenant</div>
+            <div class="text-muted" style="font-size:0.78rem">
+              <a href="https://nexiostf.com" target="_blank" rel="noopener">Technologies Nexios TF Inc.</a>
+            </div>
+          </div>
+          <div>
+            <div class="text-muted" style="font-size:0.8rem">Base de données</div>
+            <div style="font-weight:700">PostgreSQL</div>
+            <div class="text-muted" style="font-size:0.78rem">{{ db_config.host }}:{{ db_config.port }}/{{ db_config.dbname }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ Section Whitelist IP ══════════════════════════════════════ -->
+    <div class="zadmin-section" id="section-whitelist">
+      <h2 style="margin-bottom:1.5rem">&#128737; Whitelist IP — Accès zadmin</h2>
+      <div class="card">
+        <p class="text-muted" style="font-size:0.85rem;margin-bottom:1rem">
+          Une entrée par ligne. Format accepté : IP simple (<code>1.2.3.4</code>) ou CIDR (<code>10.0.0.0/24</code>).<br>
+          <strong style="color:var(--accent-red)">Attention :</strong> si vous retirez votre propre IP, vous perdrez l'accès au zadmin immédiatement.
+        </p>
+        <form method="POST" action="/zadmin/ip-whitelist">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <div class="form-group">
+            <label>IPs / CIDRs autorisés (une entrée par ligne)</label>
+            <textarea name="whitelist" rows="8" style="width:100%;font-family:monospace;font-size:0.9rem" placeholder="127.0.0.1/32&#10;::1/128&#10;10.0.0.0/24">{{ ip_whitelist }}</textarea>
+          </div>
+          <button type="submit" class="btn btn-primary">Sauvegarder la whitelist</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ══ Section Utilisateurs ══════════════════════════════════════ -->
+    {% if '*' in perms or 'users_manage' in perms %}
+    <div class="zadmin-section" id="section-users">
+      <h2 style="margin-bottom:1.5rem">&#128100; Utilisateurs zadmin</h2>
+
+      <!-- Créer un utilisateur -->
+      <div class="card mb-2">
+        <h4 style="margin-bottom:1rem;color:var(--accent-green)">Créer un utilisateur</h4>
+        <form method="POST" action="/zadmin/users/create">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+            <div class="form-group">
+              <label>Nom d'utilisateur</label>
+              <input type="text" name="username" required minlength="3" placeholder="utilisateur">
+            </div>
+            <div class="form-group">
+              <label>Email (optionnel)</label>
+              <input type="email" name="email" placeholder="admin@exemple.com">
+            </div>
+            <div class="form-group">
+              <label>Mot de passe (min. 8 caractères)</label>
+              <input type="password" name="password" required minlength="8" placeholder="••••••••">
+            </div>
+            <div class="form-group" style="display:flex;align-items:center;gap:0.75rem;padding-top:1.5rem">
+              <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
+                <input type="checkbox" name="superadmin" value="1">
+                <span>Superadmin (accès total)</span>
+              </label>
+            </div>
+          </div>
+          {% if zadmin_groupes %}
+          <div class="form-group">
+            <label>Groupes</label>
+            <div style="display:flex;flex-wrap:wrap;gap:0.5rem">
+              {% for g in zadmin_groupes %}
+              <label style="display:flex;align-items:center;gap:0.35rem;cursor:pointer;background:var(--bg-secondary);padding:0.3rem 0.6rem;border-radius:6px;font-size:0.85rem">
+                <input type="checkbox" name="groupes" value="{{ g.id }}"> {{ g.nom }}
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+          <button type="submit" class="btn btn-primary">Créer l'utilisateur</button>
+        </form>
+      </div>
+
+      <!-- Table des utilisateurs -->
+      <div class="card">
+        {% if zadmin_users %}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Utilisateur</th><th>Email</th><th>Groupes</th>
+                <th>Rôle</th><th>Statut</th><th>Dernière connexion</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for u in zadmin_users %}
+              <tr>
+                <td><strong>{{ u.username }}</strong></td>
+                <td class="text-muted">{{ u.email or '—' }}</td>
+                <td>
+                  {% if u.groupes %}
+                    {% for g in u.groupes %}<span class="badge badge-blue" style="font-size:0.75rem">{{ g }}</span> {% endfor %}
+                  {% else %}<span class="text-muted">—</span>{% endif %}
+                </td>
+                <td>
+                  {% if u.superadmin %}<span class="badge badge-amber">superadmin</span>
+                  {% else %}<span class="badge badge-blue">utilisateur</span>{% endif %}
+                </td>
+                <td>
+                  {% if u.actif %}<span class="badge badge-green">Actif</span>
+                  {% else %}<span class="badge badge-red">Inactif</span>{% endif %}
+                </td>
+                <td class="text-muted" style="font-size:0.8rem">
+                  {{ u.derniere_connexion.strftime('%Y-%m-%d %H:%M') if u.derniere_connexion else '—' }}
+                </td>
+                <td>
+                  <details style="display:inline">
+                    <summary class="btn btn-ghost btn-sm" style="cursor:pointer;list-style:none">Modifier ▾</summary>
+                    <div style="position:absolute;z-index:100;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:1rem;min-width:320px;margin-top:0.25rem">
+                      <form method="POST" action="/zadmin/users/{{ u.id }}/edit">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <div class="form-group">
+                          <label style="font-size:0.8rem">Email</label>
+                          <input type="email" name="email" value="{{ u.email or '' }}" placeholder="email@exemple.com" style="font-size:0.85rem">
+                        </div>
+                        <div class="form-group">
+                          <label style="font-size:0.8rem">Nouveau mot de passe (laisser vide pour ne pas changer)</label>
+                          <input type="password" name="password" placeholder="••••••••" style="font-size:0.85rem">
+                        </div>
+                        <div style="display:flex;gap:1rem;margin-bottom:0.75rem">
+                          <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.85rem">
+                            <input type="checkbox" name="superadmin" value="1" {% if u.superadmin %}checked{% endif %}> Superadmin
+                          </label>
+                          <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.85rem">
+                            <input type="checkbox" name="actif" value="1" {% if u.actif %}checked{% endif %}> Actif
+                          </label>
+                        </div>
+                        {% if zadmin_groupes %}
+                        <div class="form-group">
+                          <label style="font-size:0.8rem">Groupes</label>
+                          <div style="display:flex;flex-wrap:wrap;gap:0.4rem">
+                            {% for g in zadmin_groupes %}
+                            <label style="display:flex;align-items:center;gap:0.3rem;cursor:pointer;font-size:0.8rem;background:var(--bg-primary);padding:0.25rem 0.5rem;border-radius:4px">
+                              <input type="checkbox" name="groupes" value="{{ g.id }}"
+                                {% if u.groupes and g.nom in u.groupes %}checked{% endif %}> {{ g.nom }}
+                            </label>
+                            {% endfor %}
+                          </div>
+                        </div>
+                        {% endif %}
+                        <button type="submit" class="btn btn-primary btn-sm">Sauvegarder</button>
+                      </form>
+                    </div>
+                  </details>
+                  {% if u.id != current_user.id %}
+                  <form method="POST" action="/zadmin/users/{{ u.id }}/delete" style="display:inline"
+                        onsubmit="return confirm('Supprimer l\'utilisateur {{ u.username }} ?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn btn-warning btn-sm">Supprimer</button>
+                  </form>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted text-center" style="padding:1.5rem">Aucun utilisateur zadmin.</p>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ══ Section Groupes ════════════════════════════════════════════ -->
+    {% if '*' in perms or 'groups_manage' in perms %}
+    <div class="zadmin-section" id="section-groupes">
+      <h2 style="margin-bottom:1.5rem">&#128101; Groupes &amp; Permissions</h2>
+
+      <!-- Créer un groupe -->
+      <div class="card mb-2">
+        <h4 style="margin-bottom:1rem;color:var(--accent-green)">Créer un groupe</h4>
+        <form method="POST" action="/zadmin/groupes/create">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+            <div class="form-group">
+              <label>Nom du groupe</label>
+              <input type="text" name="nom" required placeholder="support, lecture-seule…">
+            </div>
+            <div class="form-group">
+              <label>Description (optionnel)</label>
+              <input type="text" name="description" placeholder="Description du groupe">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Permissions</label>
+            {% set cats = all_permissions | groupby('categorie') %}
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;margin-top:0.5rem">
+              {% for cat, items in cats %}
+              <div style="background:var(--bg-secondary);border-radius:8px;padding:0.75rem">
+                <div style="font-size:0.8rem;font-weight:700;color:var(--accent-blue);margin-bottom:0.5rem">{{ cat }}</div>
+                {% for p in items %}
+                <label style="display:flex;align-items:flex-start;gap:0.4rem;cursor:pointer;font-size:0.82rem;margin-bottom:0.35rem">
+                  <input type="checkbox" name="permissions" value="{{ p.code }}" style="margin-top:2px"> {{ p.description }}
+                </label>
+                {% endfor %}
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary">Créer le groupe</button>
+        </form>
+      </div>
+
+      <!-- Liste des groupes existants -->
+      {% for g in zadmin_groupes %}
+      <div class="card mb-2">
+        <form method="POST" action="/zadmin/groupes/{{ g.id }}/edit">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;flex-wrap:wrap;gap:0.5rem">
+            <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">
+              <input type="text" name="nom" value="{{ g.nom }}" required style="font-weight:700;font-size:1rem;background:transparent;border:none;border-bottom:1px solid var(--border);padding:0.2rem 0.4rem;color:var(--text-primary);width:180px">
+              <input type="text" name="description" value="{{ g.description or '' }}" placeholder="Description" style="font-size:0.85rem;background:transparent;border:none;border-bottom:1px dashed var(--border);padding:0.2rem 0.4rem;color:var(--text-muted);width:200px">
+            </div>
+            <div style="display:flex;gap:0.5rem">
+              <button type="submit" class="btn btn-primary btn-sm">Sauvegarder</button>
+              <button type="button" class="btn btn-warning btn-sm"
+                onclick="if(confirm('Supprimer le groupe {{ g.nom }} ?')) document.getElementById('del-g-{{ g.id }}').submit()">
+                Supprimer
+              </button>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.75rem">
+            {% set cats = all_permissions | groupby('categorie') %}
+            {% for cat, items in cats %}
+            <div style="background:var(--bg-secondary);border-radius:8px;padding:0.6rem">
+              <div style="font-size:0.78rem;font-weight:700;color:var(--accent-blue);margin-bottom:0.4rem">{{ cat }}</div>
+              {% for p in items %}
+              <label style="display:flex;align-items:flex-start;gap:0.35rem;cursor:pointer;font-size:0.8rem;margin-bottom:0.3rem">
+                <input type="checkbox" name="permissions" value="{{ p.code }}"
+                  {% if g.permissions and p.code in g.permissions %}checked{% endif %} style="margin-top:2px"> {{ p.description }}
+              </label>
+              {% endfor %}
+            </div>
+            {% endfor %}
+          </div>
+        </form>
+        <form id="del-g-{{ g.id }}" method="POST" action="/zadmin/groupes/{{ g.id }}/delete" style="display:none">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        </form>
+      </div>
+      {% else %}
+      <div class="card">
+        <p class="text-muted text-center" style="padding:1.5rem">Aucun groupe créé.</p>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- ══ Section LLM (Andy / Ollama) ══════════════════════════════════ -->
+    <div class="zadmin-section" id="section-llm">
+      <h2 style="margin-bottom:1.5rem">&#129302; LLM — Andy &amp; OCR (Ollama)</h2>
+
+      <!-- Statut connexion -->
+      <div class="card mb-2">
+        <h4 style="margin-bottom:1rem;color:var(--accent-blue)">Statut Ollama</h4>
+        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+          <span id="llm-status-dot" style="width:12px;height:12px;border-radius:50%;background:#6b7280;display:inline-block"></span>
+          <span id="llm-status-text" style="font-size:0.9rem;color:var(--text-muted)">Vérification...</span>
+          <span id="llm-ollama-url" style="font-size:0.8rem;color:var(--text-muted);font-family:monospace"></span>
+          <button class="btn btn-ghost btn-sm" onclick="llmLoadModels()">🔄 Actualiser</button>
+        </div>
+      </div>
+
+      <!-- Sélection des modèles actifs -->
+      <div class="card mb-2">
+        <h4 style="margin-bottom:1rem;color:var(--accent-blue)">Modèles actifs</h4>
+        <form method="POST" action="/zadmin/llm-config">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1rem">
+            <div class="form-group">
+              <label style="font-size:0.85rem;font-weight:600">🗨 Modèle chat (Andy)</label>
+              <select name="ollama_model_chat" id="llm-select-chat" style="width:100%">
+                <option value="">Chargement des modèles...</option>
+              </select>
+              <p class="text-muted" style="font-size:0.78rem;margin-top:0.25rem">
+                Actuel : <code id="llm-current-chat">{{ config.get('ollama_model_chat', 'qwen3.5:0.8b') if config else '—' }}</code>
+              </p>
+            </div>
+            <div class="form-group">
+              <label style="font-size:0.85rem;font-weight:600">🖼 Modèle vision (OCR)</label>
+              <select name="ollama_model_vision" id="llm-select-vision" style="width:100%">
+                <option value="">Chargement des modèles...</option>
+              </select>
+              <p class="text-muted" style="font-size:0.78rem;margin-top:0.25rem">
+                Actuel : <code id="llm-current-vision">{{ config.get('ollama_model_vision', 'qwen2.5vl:3b') if config else '—' }}</code>
+              </p>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:1rem">
+            <label style="font-size:0.85rem;font-weight:600">URL Ollama</label>
+            <input type="text" name="ollama_url" id="llm-url-input"
+                   value="{{ config.get('ollama_url', 'http://localhost:11434') if config else 'http://localhost:11434' }}"
+                   placeholder="http://localhost:11434" style="width:100%;max-width:400px">
+          </div>
+          <div class="form-group" style="margin-bottom:1rem">
+            <label style="font-size:0.85rem;font-weight:600">📁 Dossier de téléchargement des modèles (OLLAMA_MODELS)</label>
+            <input type="text" name="ollama_models_path" id="llm-models-path-input"
+                   value="{{ config.get('ollama_models_path', '') if config else '' }}"
+                   placeholder="/usr/share/ollama/.ollama/models"
+                   style="width:100%;max-width:600px;font-family:monospace">
+            <p class="text-muted" style="font-size:0.78rem;margin-top:0.25rem">
+              Configure la variable d'environnement <code>OLLAMA_MODELS</code> sur le service Ollama.
+              Laissez vide pour conserver le répertoire par défaut (<code>/root/.ollama/models</code> si lancé en root,
+              ou <code>/usr/share/ollama/.ollama/models</code> via systemd).<br>
+              <strong>Note :</strong> Après sauvegarde, FinanceFamille tente d'écrire
+              <code>/etc/systemd/system/ollama.service.d/override.conf</code> et de recharger le service.
+              Si l'application n'a pas les droits, appliquez manuellement :
+              <code>systemctl set-environment OLLAMA_MODELS=&lt;chemin&gt; &amp;&amp; systemctl restart ollama</code>
+            </p>
+          </div>
+          <button type="submit" class="btn btn-primary">💾 Sauvegarder</button>
+        </form>
+      </div>
+
+      <!-- Tirer un nouveau modèle -->
+      <div class="card mb-2">
+        <h4 style="margin-bottom:0.5rem;color:var(--accent-blue)">Tirer (pull) un nouveau modèle</h4>
+        <p class="text-muted" style="font-size:0.85rem;margin-bottom:1rem">
+          Entrez le nom exact du modèle Ollama (ex: <code>llama3.2:3b</code>, <code>qwen3:8b</code>, <code>mistral:7b</code>).
+          Le téléchargement peut prendre plusieurs minutes.
+        </p>
+        <div style="display:flex;gap:0.75rem;align-items:flex-end;flex-wrap:wrap">
+          <div class="form-group" style="margin:0;flex:1;min-width:200px">
+            <input type="text" id="llm-pull-name" placeholder="ex: llama3.2:3b"
+                   style="width:100%" autocomplete="off" spellcheck="false">
+          </div>
+          <button class="btn btn-primary" id="llm-pull-btn" onclick="llmPull()">⬇ Télécharger</button>
+        </div>
+        <div id="llm-pull-status" style="margin-top:0.75rem;font-size:0.85rem;display:none"></div>
+      </div>
+
+      <!-- Modèles disponibles -->
+      <div class="card">
+        <h4 style="margin-bottom:1rem;color:var(--accent-blue)">Modèles disponibles sur ce serveur</h4>
+        <div id="llm-models-list">
+          <p class="text-muted text-center" style="padding:1rem">Chargement...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ Section Support ════════════════════════════════════════════ -->
+    <div class="zadmin-section" id="section-support">
+      <h2 style="margin-bottom:1.5rem">&#128231; Tickets de support</h2>
+
+      <!-- Adresses configurables -->
+      <div class="card mb-2">
+        <h4 style="margin-bottom:1rem;color:var(--accent-blue)">⚙️ Configuration des adresses courriel</h4>
+        <p class="text-muted" style="font-size:0.85rem;margin-bottom:1rem">Ces adresses sont utilisées lorsqu'Andy escalade un ticket vers le support humain.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+          {% for item in config_items %}
+          {% if item.key in ['support_email_from', 'support_email_to'] %}
+          <form method="POST" action="/zadmin/config" style="display:flex;flex-direction:column;gap:0.5rem">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="key" value="{{ item.key }}">
+            <label style="font-size:0.78rem;color:var(--text-muted)">{{ item.description }}</label>
+            <div style="display:flex;gap:0.5rem">
+              <input type="email" name="value" value="{{ item.raw_value }}" style="flex:1" placeholder="adresse@exemple.com">
+              <button type="submit" class="btn btn-primary btn-sm">Sauvegarder</button>
+            </div>
+          </form>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Filtres + statistiques -->
+      <div style="display:flex;gap:1rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap">
+        <div style="display:flex;gap:0.5rem">
+          <button class="btn btn-sm" id="support-filter-all"    onclick="supportSetFilter('all')"    style="background:rgba(37,99,235,0.1);border:1px solid rgba(37,99,235,0.3)">Tous</button>
+          <button class="btn btn-sm" id="support-filter-nouveau" onclick="supportSetFilter('nouveau')"  style="background:none;border:1px solid var(--border)">Nouveaux</button>
+          <button class="btn btn-sm" id="support-filter-en_cours" onclick="supportSetFilter('en_cours')" style="background:none;border:1px solid var(--border)">En cours</button>
+          <button class="btn btn-sm" id="support-filter-resolu"  onclick="supportSetFilter('resolu')"   style="background:none;border:1px solid var(--border)">Résolus</button>
+        </div>
+        <button onclick="supportLoadTickets()" class="btn btn-ghost btn-sm">🔄 Rafraîchir</button>
+        <span id="support-count" style="font-size:0.82rem;color:var(--text-muted)"></span>
+      </div>
+
+      <!-- Table des tickets -->
+      <div class="card" style="padding:0;overflow:hidden">
+        <div id="support-tickets-table" style="overflow-x:auto">
+          <p class="text-muted text-center" style="padding:2rem">Chargement...</p>
+        </div>
+      </div>
+
+      <!-- Modal détail ticket -->
+      <div id="support-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;align-items:center;justify-content:center" onclick="if(event.target===this)supportCloseModal()">
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);max-width:700px;width:95%;max-height:85vh;overflow-y:auto;padding:1.5rem;position:relative">
+          <button onclick="supportCloseModal()" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--text-muted)">✕</button>
+          <div id="support-modal-content"></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  function toggleZadminSidebar() {
+    document.getElementById("zadmin-sidebar").classList.toggle("open");
+    document.getElementById("zadmin-overlay").classList.toggle("open");
+  }
+
+  function showSection(name, el) {
+    document.querySelectorAll(".zadmin-section").forEach(s => s.classList.remove("active"));
+    document.getElementById("section-" + name).classList.add("active");
+    document.querySelectorAll(".zadmin-nav-item").forEach(i => i.classList.remove("active"));
+    if (el) el.classList.add("active");
+    // Fermer la sidebar sur mobile après navigation
+    document.getElementById("zadmin-sidebar").classList.remove("open");
+    document.getElementById("zadmin-overlay").classList.remove("open");
+  }
+
+  // Activer la section depuis le hash de l'URL
+  (function() {
+    const sections = ['config', 'db', 'comptes', 'system', 'whitelist', 'users', 'groupes', 'llm', 'support'];
+    const hash = location.hash.replace('#', '');
+    if (sections.includes(hash)) {
+      const el = document.querySelector('.zadmin-nav-item[onclick*="\'' + hash + '\'"]');
+      showSection(hash, el);
+    }
+  })();
+
+  // ── LLM / Ollama ────────────────────────────────────────────────────────
+  let _llmModels = [];
+
+  async function llmLoadModels() {
+    const dot  = document.getElementById('llm-status-dot');
+    const txt  = document.getElementById('llm-status-text');
+    const urlEl = document.getElementById('llm-ollama-url');
+    const list = document.getElementById('llm-models-list');
+    if (dot) dot.style.background = '#f59e0b';
+    if (txt) txt.textContent = 'Connexion en cours...';
+
+    try {
+      const r = await fetch('/zadmin/api/ollama-models');
+      const d = await r.json();
+
+      // Statut
+      if (d.connected) {
+        if (dot) dot.style.background = '#22c55e';
+        if (txt) txt.textContent = 'Ollama connecté ✓';
+      } else {
+        if (dot) dot.style.background = '#ef4444';
+        if (txt) txt.textContent = 'Ollama inaccessible ✗' + (d.error ? ' — ' + d.error : '');
+      }
+
+      // URL
+      const urlInput = document.getElementById('llm-url-input');
+      if (urlEl && urlInput) urlEl.textContent = urlInput.value;
+
+      _llmModels = d.models || [];
+
+      // Peupler les selects
+      const currentChat   = document.getElementById('llm-current-chat')?.textContent?.trim() || '';
+      const currentVision = document.getElementById('llm-current-vision')?.textContent?.trim() || '';
+      llmPopulateSelect('llm-select-chat',   _llmModels, currentChat);
+      llmPopulateSelect('llm-select-vision', _llmModels, currentVision);
+
+      // Liste des modèles disponibles
+      if (!list) return;
+      if (!_llmModels.length) {
+        list.innerHTML = '<p class="text-muted text-center" style="padding:1rem">Aucun modèle trouvé.' +
+          (d.connected ? ' Utilisez le bouton « Télécharger » pour en ajouter.' : '') + '</p>';
+        return;
+      }
+      list.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:0.5rem">` +
+        _llmModels.map(m =>
+          `<span style="background:var(--surface-2,#1e293b);border:1px solid var(--border);border-radius:0.4rem;
+                         padding:0.3rem 0.65rem;font-size:0.82rem;font-family:monospace">${escHtmlLlm(m)}</span>`
+        ).join('') + `</div>`;
+    } catch(e) {
+      if (dot) dot.style.background = '#ef4444';
+      if (txt) txt.textContent = 'Erreur réseau : ' + e.message;
+      if (list) list.innerHTML = '<p class="text-muted text-center" style="padding:1rem">Erreur de chargement.</p>';
+    }
+  }
+
+  function llmPopulateSelect(selectId, models, currentValue) {
+    const sel = document.getElementById(selectId);
+    if (!sel) return;
+    const prev = sel.value || currentValue;
+    sel.innerHTML = models.length
+      ? models.map(m => `<option value="${escHtmlLlm(m)}" ${m === prev ? 'selected' : ''}>${escHtmlLlm(m)}</option>`).join('')
+      : `<option value="${escHtmlLlm(currentValue)}">${escHtmlLlm(currentValue)} (actuel)</option>`;
+  }
+
+  async function llmPull() {
+    const nameEl  = document.getElementById('llm-pull-name');
+    const btn     = document.getElementById('llm-pull-btn');
+    const statusEl= document.getElementById('llm-pull-status');
+    const name    = (nameEl?.value || '').trim();
+    if (!name) { nameEl?.focus(); return; }
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Téléchargement...';
+    if (statusEl) { statusEl.style.display = ''; statusEl.style.color = 'var(--text-muted)'; statusEl.textContent = `Téléchargement de « ${name} » en cours — cela peut prendre plusieurs minutes...`; }
+
+    try {
+      const r = await fetch('/zadmin/api/ollama-pull', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({model: name}),
+      });
+      const d = await r.json().catch(() => ({ error: 'Réponse invalide du serveur (timeout ?)' }));
+      if (r.ok && d.ok) {
+        if (statusEl) { statusEl.style.color = '#22c55e'; statusEl.textContent = `✓ Modèle « ${name} » téléchargé avec succès !`; }
+        nameEl.value = '';
+        llmLoadModels();
+      } else {
+        if (statusEl) { statusEl.style.color = '#ef4444'; statusEl.textContent = `✗ Erreur : ${d.error || 'Échec inconnu'}`; }
+      }
+    } catch(e) {
+      if (statusEl) { statusEl.style.color = '#ef4444'; statusEl.textContent = `✗ Erreur réseau : ${e.message}`; }
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '⬇ Télécharger';
+    }
+  }
+
+  function escHtmlLlm(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // Charger les modèles si on arrive directement sur #llm
+  if (location.hash === '#llm') llmLoadModels();
+  if (location.hash === '#support') supportLoadTickets();
+
+  // ── Support tickets ──────────────────────────────────────────────────────
+  let _supportFilter = 'all';
+  let _supportTickets = [];
+
+  function supportSetFilter(f) {
+    _supportFilter = f;
+    ['all','nouveau','en_cours','resolu'].forEach(k => {
+      const btn = document.getElementById('support-filter-' + k);
+      if (btn) btn.style.background = k === f ? 'rgba(37,99,235,0.15)' : 'none';
+    });
+    supportRenderTable();
+  }
+
+  async function supportLoadTickets() {
+    const tbl = document.getElementById('support-tickets-table');
+    if (tbl) tbl.innerHTML = '<p class="text-muted text-center" style="padding:2rem">Chargement...</p>';
+    try {
+      const r = await fetch('/zadmin/api/support/tickets');
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      _supportTickets = await r.json();
+      supportRenderTable();
+    } catch(e) {
+      if (tbl) tbl.innerHTML = `<p class="text-muted text-center" style="padding:2rem">Erreur : ${e.message}</p>`;
+    }
+  }
+
+  const _supportStatutLabels = {
+    'nouveau':  '<span style="background:#fef3c7;color:#92400e;padding:0.2rem 0.6rem;border-radius:999px;font-size:0.75rem;font-weight:600">🆕 Nouveau</span>',
+    'en_cours': '<span style="background:#dbeafe;color:#1e40af;padding:0.2rem 0.6rem;border-radius:999px;font-size:0.75rem;font-weight:600">🔄 En cours</span>',
+    'resolu':   '<span style="background:#dcfce7;color:#166534;padding:0.2rem 0.6rem;border-radius:999px;font-size:0.75rem;font-weight:600">✅ Résolu</span>',
+    'ferme':    '<span style="background:#f1f5f9;color:#64748b;padding:0.2rem 0.6rem;border-radius:999px;font-size:0.75rem;font-weight:600">🔒 Fermé</span>',
+  };
+
+  function supportRenderTable() {
+    const tbl = document.getElementById('support-tickets-table');
+    if (!tbl) return;
+    const list = _supportFilter === 'all'
+      ? _supportTickets
+      : _supportTickets.filter(t => t.statut === _supportFilter);
+
+    const countEl = document.getElementById('support-count');
+    if (countEl) countEl.textContent = `${list.length} ticket${list.length !== 1 ? 's' : ''}`;
+
+    if (!list.length) {
+      tbl.innerHTML = '<p class="text-muted text-center" style="padding:2rem">Aucun ticket trouvé.</p>';
+      return;
+    }
+    let html = `<table class="zadmin-table" style="width:100%">
+      <thead><tr>
+        <th style="width:60px">#</th>
+        <th>Utilisateur</th>
+        <th>Courriel</th>
+        <th>Statut</th>
+        <th>Email envoyé</th>
+        <th>Date</th>
+        <th>Actions</th>
+      </tr></thead><tbody>`;
+    for (const t of list) {
+      const date = new Date(t.cree_le).toLocaleString('fr-CA', {dateStyle:'short', timeStyle:'short'});
+      html += `<tr>
+        <td><strong>#${t.id}</strong></td>
+        <td>${_escH(t.username || '—')}</td>
+        <td style="font-size:0.82rem;color:var(--text-muted)">${_escH(t.email_membre || '—')}</td>
+        <td>${_supportStatutLabels[t.statut] || t.statut}</td>
+        <td style="text-align:center">${t.email_envoye ? '✅' : '❌'}</td>
+        <td style="font-size:0.82rem;white-space:nowrap">${date}</td>
+        <td style="white-space:nowrap">
+          <button onclick="supportVoirTicket(${t.id})" class="btn btn-ghost btn-sm" style="font-size:0.78rem">👁 Voir</button>
+          <select onchange="supportChgStatut(${t.id}, this.value); this.value=''"
+                  style="font-size:0.78rem;padding:0.2rem 0.4rem;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg-input);color:var(--text-primary)">
+            <option value="">Changer statut…</option>
+            <option value="nouveau">🆕 Nouveau</option>
+            <option value="en_cours">🔄 En cours</option>
+            <option value="resolu">✅ Résolu</option>
+            <option value="ferme">🔒 Fermer</option>
+          </select>
+        </td>
+      </tr>`;
+    }
+    html += '</tbody></table>';
+    tbl.innerHTML = html;
+  }
+
+  function _escH(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  async function supportVoirTicket(id) {
+    const ticket = _supportTickets.find(t => t.id === id);
+    if (!ticket) return;
+    const date = new Date(ticket.cree_le).toLocaleString('fr-CA', {dateStyle:'long', timeStyle:'short'});
+    let convHtml = '';
+    for (const line of (ticket.conversation || '').split('\n')) {
+      const l = line.trim();
+      if (!l) continue;
+      if (l.startsWith('👤')) {
+        convHtml += `<div style="margin:0.4rem 0;padding:0.5rem 0.75rem;background:var(--bg-hover);border-radius:6px;font-size:0.85rem"><strong style="color:var(--accent-blue)">👤 Utilisateur :</strong> ${_escH(l.slice(1).trim())}</div>`;
+      } else if (l.startsWith('🤖')) {
+        convHtml += `<div style="margin:0.4rem 0;padding:0.5rem 0.75rem;background:rgba(37,99,235,0.05);border-radius:6px;font-size:0.85rem"><strong style="color:var(--accent-violet)">🤖 Andy :</strong> ${_escH(l.slice(1).trim())}</div>`;
+      } else {
+        convHtml += `<div style="font-size:0.8rem;color:var(--text-muted)">${_escH(l)}</div>`;
+      }
+    }
+
+    const modal = document.getElementById('support-modal-overlay');
+    const content = document.getElementById('support-modal-content');
+    content.innerHTML = `
+      <h3 style="margin-bottom:1rem">Ticket de support #${ticket.id}</h3>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:1.25rem;font-size:0.88rem">
+        <tr><td style="padding:0.3rem 0;color:var(--text-muted);width:130px">Utilisateur</td><td><strong>${_escH(ticket.username || '—')}</strong></td></tr>
+        <tr><td style="padding:0.3rem 0;color:var(--text-muted)">Courriel</td><td>${_escH(ticket.email_membre || '—')}</td></tr>
+        <tr><td style="padding:0.3rem 0;color:var(--text-muted)">Statut</td><td>${_supportStatutLabels[ticket.statut] || ticket.statut}</td></tr>
+        <tr><td style="padding:0.3rem 0;color:var(--text-muted)">Date</td><td>${date}</td></tr>
+        <tr><td style="padding:0.3rem 0;color:var(--text-muted)">Email envoyé</td><td>${ticket.email_envoye ? '✅ Oui' : '❌ Non'}</td></tr>
+      </table>
+      ${ticket.commentaire ? `<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:0.75rem;margin-bottom:1.25rem;font-size:0.88rem"><strong>💬 Commentaire :</strong><br>${_escH(ticket.commentaire)}</div>` : ''}
+      <h4 style="margin-bottom:0.75rem;font-size:0.9rem">📋 Conversation avec Andy</h4>
+      <div style="border:1px solid var(--border);border-radius:8px;padding:0.75rem;max-height:340px;overflow-y:auto">
+        ${convHtml || '<p style="color:var(--text-muted);font-style:italic">Aucun historique.</p>'}
+      </div>
+      <div style="margin-top:1.25rem">
+        <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:0.3rem">Note interne (visible uniquement dans le zadmin)</label>
+        <textarea id="support-note-input" rows="2" style="width:100%;resize:vertical;font-size:0.85rem;padding:0.4rem 0.6rem;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg-input);color:var(--text-primary)"
+                  placeholder="Ajouter une note sur ce ticket…">${_escH(ticket.note_admin || '')}</textarea>
+        <div style="display:flex;gap:0.5rem;margin-top:0.5rem;justify-content:space-between;flex-wrap:wrap">
+          <div style="display:flex;gap:0.5rem">
+            <button onclick="supportChgStatut(${ticket.id},'en_cours')" class="btn btn-sm" style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);color:#60a5fa">🔄 En cours</button>
+            <button onclick="supportChgStatut(${ticket.id},'resolu')" class="btn btn-sm" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#4ade80">✅ Résolu</button>
+            <button onclick="supportChgStatut(${ticket.id},'ferme')" class="btn btn-sm" style="background:rgba(100,116,139,0.1);border:1px solid rgba(100,116,139,0.3);color:var(--text-muted)">🔒 Fermer</button>
+          </div>
+          <button onclick="supportSaveNote(${ticket.id})" class="btn btn-primary btn-sm">💾 Sauvegarder la note</button>
+        </div>
+      </div>
+    `;
+    modal.style.display = 'flex';
+  }
+
+  function supportCloseModal() {
+    document.getElementById('support-modal-overlay').style.display = 'none';
+  }
+
+  async function supportChgStatut(id, statut) {
+    try {
+      const r = await fetch(`/zadmin/api/support/tickets/${id}/statut`, {
+        method: 'PUT',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ statut })
+      });
+      if (r.ok) {
+        const t = _supportTickets.find(t => t.id === id);
+        if (t) t.statut = statut;
+        supportRenderTable();
+        supportCloseModal();
+      }
+    } catch(e) { alert('Erreur : ' + e.message); }
+  }
+
+  async function supportSaveNote(id) {
+    const note = document.getElementById('support-note-input')?.value || '';
+    try {
+      const r = await fetch(`/zadmin/api/support/tickets/${id}/note`, {
+        method: 'PUT',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ note })
+      });
+      if (r.ok) {
+        const t = _supportTickets.find(t => t.id === id);
+        if (t) t.note_admin = note;
+        supportCloseModal();
+      }
+    } catch(e) { alert('Erreur : ' + e.message); }
+  }
+</script>
+<!-- Fabriqué par Technologies Nexios TF Inc. — https://nexiostf.com -->
+</body>
+</html>

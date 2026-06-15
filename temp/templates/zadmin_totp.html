@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zadmin — Vérification 2FA</title>
+  <link rel="icon" type="image/x-icon" href="/static/icons/favicon.ico">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script>(function(){var t=localStorage.getItem("financefamille_theme")||"dark";document.documentElement.setAttribute("data-theme",t);})();</script>
+</head>
+<body>
+<div class="login-page">
+  <div class="login-box">
+    <div class="login-logo">
+      <h1 style="background:linear-gradient(135deg,#F59E0B,#EF4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">
+        🔐 Vérification 2FA
+      </h1>
+      <p>Entrez le code généré par votre application d'authentification</p>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="/zadmin/totp" autocomplete="off">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="form-group">
+        <label>Code TOTP (6 chiffres)</label>
+        <input type="text" name="totp_code" inputmode="numeric" pattern="[0-9]{6}"
+               maxlength="6" placeholder="123456" autofocus autocomplete="one-time-code"
+               required style="font-size:1.5rem;letter-spacing:0.3rem;text-align:center">
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;margin-top:1rem">
+        ✅ Vérifier
+      </button>
+    </form>
+
+    <div style="margin-top:1.5rem;text-align:center">
+      <a href="/zadmin/login" style="font-size:0.85rem;opacity:0.6">← Retour à la connexion</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>

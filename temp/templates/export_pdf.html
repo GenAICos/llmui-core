@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Rapport Budget — FinanceFamille</title>
+  <style>
+    /* Styles optimisés pour WeasyPrint */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 11px; color: #1a1a2e; background: #fff; }
+
+    /* En-tête */
+    .header { display: flex; justify-content: space-between; align-items: flex-end; padding: 20px 30px; background: linear-gradient(135deg, #0D1526, #141F35); color: #F0F5FF; border-radius: 0 0 12px 12px; margin-bottom: 20px; }
+    .header h1 { font-size: 22px; font-weight: 900; }
+    .header .sub { font-size: 10px; opacity: 0.7; margin-top: 4px; }
+    .header .meta { text-align: right; font-size: 10px; opacity: 0.8; }
+
+    /* Sections */
+    .section { margin: 0 30px 20px; }
+    .section-title { font-size: 13px; font-weight: 700; color: #2563EB; border-bottom: 2px solid #2563EB; padding-bottom: 4px; margin-bottom: 10px; }
+
+    /* Cartes résumé */
+    .summary-row { display: flex; gap: 12px; margin: 0 30px 20px; }
+    .summary-card { flex: 1; background: #F0F5FF; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px; text-align: center; }
+    .summary-card .label { font-size: 9px; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .summary-card .value { font-size: 16px; font-weight: 800; }
+    .green { color: #10B981; }
+    .red   { color: #EF4444; }
+    .blue  { color: #2563EB; }
+    .amber { color: #F59E0B; }
+
+    /* Tableaux */
+    table { width: 100%; border-collapse: collapse; font-size: 10px; }
+    thead th { background: #0D1526; color: #F0F5FF; padding: 6px 8px; text-align: left; font-weight: 600; font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; }
+    tbody td { padding: 6px 8px; border-bottom: 1px solid #F1F5F9; }
+    tbody tr:nth-child(even) { background: #F8FAFC; }
+    .text-right { text-align: right; }
+
+    /* Pied de page */
+    .footer { margin: 30px 30px 20px; padding-top: 12px; border-top: 1px solid #E2E8F0; font-size: 9px; color: #94A3B8; text-align: center; }
+
+    /* Saut de page */
+    .pagebreak { page-break-before: always; }
+  </style>
+</head>
+<body>
+
+<!-- En-tête -->
+<div class="header">
+  <div>
+    <h1>FinanceFamille</h1>
+    <div class="sub">Gestionnaire de budget familial — Technologies Nexios TF Inc.</div>
+  </div>
+  <div class="meta">
+    <div>Rapport généré le {{ date_rapport }}</div>
+    <div>Période : {{ periode }}</div>
+  </div>
+</div>
+
+<!-- Résumé -->
+<div class="summary-row">
+  <div class="summary-card">
+    <div class="label">Revenu mensuel</div>
+    <div class="value green">{{ symbole }}{{ "%.2f"|format(revenu_mensuel) }}</div>
+  </div>
+  <div class="summary-card">
+    <div class="label">Paiements fixes</div>
+    <div class="value blue">{{ symbole }}{{ "%.2f"|format(paiements_total) }}</div>
+  </div>
+  <div class="summary-card">
+    <div class="label">Dépenses du mois</div>
+    <div class="value amber">{{ symbole }}{{ "%.2f"|format(depenses_total) }}</div>
+  </div>
+  <div class="summary-card">
+    <div class="label">Solde disponible</div>
+    <div class="value {{ 'green' if solde >= 0 else 'red' }}">{{ symbole }}{{ "%.2f"|format(solde) }}</div>
+  </div>
+</div>
+
+<!-- Salaires -->
+{% if salaires %}
+<div class="section">
+  <div class="section-title">Salaires</div>
+  <table>
+    <thead>
+      <tr><th>Personne</th><th>Salaire net</th><th>Fréquence</th><th>Prochaine paie</th></tr>
+    </thead>
+    <tbody>
+      {% for s in salaires %}
+      <tr>
+        <td>{{ s.personne }}</td>
+        <td>{{ symbole }}{{ "%.2f"|format(s.montant_net) }}</td>
+        <td>{{ s.frequence }}</td>
+        <td>{{ s.date_paiement or "—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<!-- Paiements -->
+{% if paiements %}
+<div class="section">
+  <div class="section-title">Paiements &amp; Dettes</div>
+  <table>
+    <thead>
+      <tr><th>Nom</th><th>Montant</th><th>Fréquence</th><th>Prochaine échéance</th><th>Dette</th><th>Restant</th></tr>
+    </thead>
+    <tbody>
+      {% for p in paiements %}
+      <tr>
+        <td>{{ p.nom }}</td>
+        <td>{{ symbole }}{{ "%.2f"|format(p.montant) }}</td>
+        <td>{{ p.frequence }}</td>
+        <td>{{ p.date_paiement or "—" }}</td>
+        <td>{{ "Oui" if p.est_dette else "Non" }}</td>
+        <td>{{ (symbole ~ "%.2f"|format(p.montant_restant_dette)) if p.est_dette else "—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<!-- Dépenses du mois -->
+{% if depenses %}
+<div class="section pagebreak">
+  <div class="section-title">Dépenses du mois — {{ periode }}</div>
+  <table>
+    <thead>
+      <tr><th>Date</th><th>Libellé</th><th>Catégorie</th><th>Note</th><th class="text-right">Montant</th></tr>
+    </thead>
+    <tbody>
+      {% for d in depenses %}
+      <tr>
+        <td>{{ d.date_depense }}</td>
+        <td>{{ d.nom }}</td>
+        <td>{{ d.categorie or "—" }}</td>
+        <td>{{ d.note or "" }}</td>
+        <td class="text-right">{{ symbole }}{{ "%.2f"|format(d.montant) }}</td>
+      </tr>
+      {% endfor %}
+      <tr style="font-weight:700;background:#F0F5FF">
+        <td colspan="4" class="text-right">TOTAL</td>
+        <td class="text-right">{{ symbole }}{{ "%.2f"|format(depenses_total) }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<!-- Pied de page -->
+<div class="footer">
+  Rapport confidentiel — FinanceFamille — Développé par Technologies Nexios TF Inc. | nexiostf.com<br>
+  Généré automatiquement le {{ date_rapport }}
+</div>
+
+</body>
+</html>

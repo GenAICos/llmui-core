@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}Abonnement{% endblock %}
+
+{% block head_extra %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block body %}
+<header class="header">
+  <span class="header-logo">
+    <img src="/static/img/logo.png" alt="{{ app_name }}" class="header-logo-img logo-dark"
+         onerror="this.style.display='none';document.getElementById('header-app-name-ab').style.display='inline'">
+    <img src="/static/img/logoWhite.png" alt="{{ app_name }}" class="header-logo-img logo-light"
+         onerror="this.style.display='none';document.getElementById('header-app-name-ab').style.display='inline'">
+    <span id="header-app-name-ab" style="display:none">{{ app_name }}</span>
+  </span>
+  <div class="header-actions">
+    <a href="/dashboard" class="btn btn-ghost btn-sm" data-i18n="nav.dashboard">← Dashboard</a>
+    <form method="POST" action="/logout" style="display:inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="btn btn-ghost btn-sm" data-i18n="btn.logout">Déconnexion</button>
+    </form>
+  </div>
+</header>
+
+<div style="max-width:720px;margin:2rem auto;padding:0 1rem">
+
+  {% if success %}
+  <div class="alert alert-success" style="margin-bottom:1.5rem">
+    ✅ Paiement confirmé — votre abonnement est maintenant actif. Merci !
+  </div>
+  {% endif %}
+  {% if cancel %}
+  <div class="alert alert-warning" style="margin-bottom:1.5rem">
+    ↩ Paiement annulé — votre abonnement n'a pas été modifié.
+  </div>
+  {% endif %}
+
+  <!-- Statut actuel -->
+  <div class="card" style="margin-bottom:2rem;padding:1.5rem">
+    <h2 style="margin-bottom:1rem">Votre abonnement</h2>
+    {% if is_demo %}
+      <div class="badge badge-blue" style="font-size:1rem;padding:0.4rem 0.9rem">
+        🧪 Compte de démonstration
+      </div>
+    {% elif plan_status.plan == 'trial' %}
+      {% if plan_status.actif %}
+      <div class="badge badge-blue" style="font-size:1rem;padding:0.4rem 0.9rem">
+        🧪 Essai gratuit — {{ plan_status.jours_restants }} jour(s) restant(s)
+      </div>
+      {% else %}
+      <div class="badge badge-red" style="font-size:1rem;padding:0.4rem 0.9rem">
+        ⛔ Période d'essai expirée
+      </div>
+      {% endif %}
+    {% elif plan_status.actif %}
+      <div class="badge badge-green" style="font-size:1rem;padding:0.4rem 0.9rem">
+        ✅ Abonnement {{ plan_status.plan }} actif
+        {% if plan_status.fin %} — renouvellement le {{ plan_status.fin }}{% endif %}
+      </div>
+      {% if stripe_configured %}
+      <div style="margin-top:1.25rem">
+        <button class="btn btn-ghost btn-sm" id="btn-cancel-sub" onclick="cancelSubscription()">
+          Annuler l'abonnement
+        </button>
+      </div>
+      {% endif %}
+    {% else %}
+      <div class="badge badge-red" style="font-size:1rem;padding:0.4rem 0.9rem">
+        ⛔ Abonnement expiré
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Plans disponibles -->
+  {% if is_demo %}
+  <div class="alert alert-info">
+    🧪 Vous explorez {{ app_name }} avec le <strong>compte de démonstration</strong>.
+    La souscription à un abonnement est désactivée en mode démo.
+    <a href="/signup">Créez votre propre compte</a> pour choisir un plan.
+  </div>
+  {% elif stripe_configured and (not plan_status.actif or plan_status.plan == 'trial') %}
+  <h2 style="margin-bottom:1.25rem">Choisir un plan</h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:2rem">
+
+    <div class="card plan-card" style="padding:1.5rem;text-align:center">
+      <div style="font-size:1.5rem;margin-bottom:0.5rem">📅</div>
+      <h3>Mensuel</h3>
+      <div class="plan-price">{{ currency_symbol }}{{ prix_mensuel }}<span>/mois</span></div>
+      <ul class="plan-features">
+        <li>✅ Toutes les fonctionnalités</li>
+        <li>✅ OCR Factures illimité</li>
+        <li>✅ Andy IA inclus</li>
+        <li>✅ Annulable à tout moment</li>
+      </ul>
+      <button class="btn btn-primary" style="width:100%;margin-top:1rem"
+              onclick="startCheckout('mensuel')">
+        S'abonner mensuellement
+      </button>
+    </div>
+
+    <div class="card plan-card plan-card--featured" style="padding:1.5rem;text-align:center;position:relative">
+      <div class="plan-badge-popular">Meilleure valeur</div>
+      <div style="font-size:1.5rem;margin-bottom:0.5rem">📆</div>
+      <h3>Annuel</h3>
+      <div class="plan-price">{{ currency_symbol }}{{ prix_annuel }}<span>/an</span></div>
+      <ul class="plan-features">
+        <li>✅ Toutes les fonctionnalités</li>
+        <li>✅ OCR Factures illimité</li>
+        <li>✅ Andy IA inclus</li>
+        <li>✅ 2 mois offerts vs mensuel</li>
+      </ul>
+      <button class="btn btn-primary" style="width:100%;margin-top:1rem"
+              onclick="startCheckout('annuel')">
+        S'abonner annuellement
+      </button>
+    </div>
+  </div>
+  {% elif not stripe_configured %}
+  <div class="alert alert-warning">
+    ⚙️ Le système de paiement n'est pas encore configuré sur ce serveur.
+    Contactez l'administrateur.
+  </div>
+  {% endif %}
+
+</div>
+
+<footer class="footer">
+  <a href="https://nexiostf.com" target="_blank" rel="noopener">Technologies Nexios TF Inc.</a>
+  &nbsp;·&nbsp;
+  <a href="/cgu">CGU</a>
+  &nbsp;·&nbsp;
+  <a href="/confidentialite">Confidentialité</a>
+</footer>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const CSRF = "{{ csrf_token | e }}";
+
+  async function startCheckout(plan) {
+    const btn = event.currentTarget;
+    btn.disabled = true;
+    btn.textContent = "Redirection…";
+    try {
+      const r = await fetch("/api/license/checkout", {
+        method: "POST",
+        headers: {"Content-Type": "application/json", "X-CSRF-Token": CSRF},
+        body: JSON.stringify({plan}),
+      });
+      if (!r.ok) {
+        const e = await r.json();
+        alert(e.detail || "Erreur lors de la création du paiement.");
+        btn.disabled = false;
+        btn.textContent = plan === "mensuel" ? "S'abonner mensuellement" : "S'abonner annuellement";
+        return;
+      }
+      const {checkout_url} = await r.json();
+      window.location.href = checkout_url;
+    } catch (e) {
+      alert("Erreur réseau. Réessayez.");
+      btn.disabled = false;
+    }
+  }
+
+  async function cancelSubscription() {
+    if (!confirm("Annuler l'abonnement à la fin de la période en cours ?")) return;
+    const r = await fetch("/api/license/cancel", {
+      method: "POST",
+      headers: {"X-CSRF-Token": CSRF},
+    });
+    const data = await r.json();
+    alert(data.message || (r.ok ? "Abonnement annulé." : "Erreur."));
+    if (r.ok) location.reload();
+  }
+</script>
+{% endblock %}

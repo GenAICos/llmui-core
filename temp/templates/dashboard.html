@@ -1,0 +1,766 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block head_extra %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block body %}
+<!-- ── Header fixe ──────────────────────────────────────────────────── -->
+<header class="header">
+  <span class="header-logo">
+    <img src="/static/img/logo.png" alt="{{ app_name }}" class="header-logo-img logo-dark"
+         onerror="this.style.display='none';document.getElementById('header-app-name').style.display='inline'">
+    <img src="/static/img/logoWhite.png" alt="{{ app_name }}" class="header-logo-img logo-light"
+         onerror="this.style.display='none';document.getElementById('header-app-name').style.display='inline'">
+    <span id="header-app-name" style="display:none">{{ app_name }}</span>
+  </span>
+
+  <div class="header-actions">
+    <!-- Sélecteur de langue -->
+    <div class="lang-dropdown">
+      <button class="lang-dropdown-toggle" id="lang-toggle-btn" onclick="toggleLangMenu()" aria-haspopup="true">
+        <span id="lang-current">🇫🇷 FR</span> ▾
+      </button>
+      <div class="lang-menu" id="lang-menu" role="menu">
+        <button class="lang-btn" data-lang="fr"  role="menuitem">🇫🇷 Français</button>
+        <button class="lang-btn" data-lang="en"  role="menuitem">🇬🇧 English</button>
+        <button class="lang-btn" data-lang="es"  role="menuitem">🇪🇸 Español</button>
+        <button class="lang-btn" data-lang="de"  role="menuitem">🇩🇪 Deutsch</button>
+        <button class="lang-btn" data-lang="pt"  role="menuitem">🇧🇷 Português</button>
+        <button class="lang-btn" data-lang="hi"  role="menuitem">🇮🇳 हिन्दी</button>
+      </div>
+    </div>
+
+    <!-- Thème clair/sombre -->
+    <button class="btn btn-ghost btn-sm btn-icon" id="theme-toggle" onclick="toggleTheme()" title="Thème"></button>
+
+    <!-- Exports -->
+    <a href="/export/pdf" class="btn btn-ghost btn-sm" title="Rapport PDF">
+      📄 <span data-i18n="btn.export_pdf" class="hidden-mobile">PDF</span>
+    </a>
+
+    <!-- Avatar utilisateur -->
+    <div class="user-dropdown" id="user-dropdown">
+      <button class="user-avatar-btn" onclick="toggleUserMenu()" aria-haspopup="true" aria-expanded="false" id="user-avatar-btn">
+        {{ username[0].upper() if username else "?" }}
+      </button>
+      <div class="user-menu" id="user-menu" role="menu">
+        <div class="user-menu-header">
+          <div class="user-menu-name">{{ username }}</div>
+          <div class="user-menu-meta">
+            <span class="user-menu-role">{{ role | capitalize }}</span>
+            {% if plan == 'trial' %}<span class="user-menu-plan badge-blue">🧪 Essai</span>
+            {% elif plan == 'mensuel' %}<span class="user-menu-plan badge-green">📅 Mensuel</span>
+            {% elif plan == 'annuel' %}<span class="user-menu-plan badge-green">📅 Annuel</span>
+            {% endif %}
+          </div>
+        </div>
+        <a href="/abonnement" class="user-menu-item" role="menuitem" data-i18n="nav.abonnement">Abonnement</a>
+        <button type="button" class="user-menu-item" role="menuitem" onclick="openCurrencySettings();toggleUserMenu()">💱 Devise</button>
+        <button type="button" class="user-menu-item" role="menuitem" onclick="openTotpSettings();toggleUserMenu()">🔐 Sécurité (2FA)</button>
+        <a href="/api/user/export-data" class="user-menu-item" role="menuitem" onclick="toggleUserMenu()">📦 Exporter mes données</a>
+        <button type="button" class="user-menu-item" role="menuitem" onclick="toggleUserMenu();openDeleteAccountModal()" style="color:#dc2626">🗑️ Supprimer mon compte</button>
+        <div class="user-menu-divider"></div>
+        <form method="POST" action="/logout" style="display:block">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="user-menu-item user-menu-logout" role="menuitem" data-i18n="btn.logout">Déconnexion</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ── Recommandation 2FA ────────────────────────────────────────── -->
+{% if not totp_actif %}
+<div id="totp-banner" style="background:rgba(37,99,235,0.12);border-bottom:1px solid rgba(37,99,235,0.25);padding:0.6rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+  <span style="font-size:0.88rem">🔐 <strong>Sécurisez votre compte</strong> — Activez l'authentification à deux facteurs (2FA) pour protéger vos données.</span>
+  <div style="display:flex;gap:0.5rem;flex-shrink:0">
+    <button class="btn btn-primary btn-sm" onclick="openTotpSettings()">Activer le 2FA</button>
+    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('totp-banner').style.display='none'">✕</button>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── Bandeau de résumé (4 cartes) ────────────────────────────────── -->
+<div class="summary-grid">
+  <div class="summary-card">
+    <div class="label" data-i18n="summary.revenue">Revenu mensuel</div>
+    <div class="value text-green" id="sum-revenue">—</div>
+  </div>
+  <div class="summary-card">
+    <div class="label" data-i18n="summary.payments">Paiements fixes</div>
+    <div class="value text-blue" id="sum-payments">—</div>
+  </div>
+  <div class="summary-card">
+    <div class="label" data-i18n="summary.expenses">Dépenses du mois</div>
+    <div class="value text-amber" id="sum-expenses">—</div>
+  </div>
+  <div class="summary-card">
+    <div class="label" data-i18n="summary.balance">Solde disponible</div>
+    <div class="value" id="sum-balance">—</div>
+  </div>
+</div>
+
+<!-- ── Navigation onglets ───────────────────────────────────────────── -->
+<nav class="tab-nav">
+  <button class="tab-btn" data-tab="revenus"   data-i18n="nav.revenus">Revenus</button>
+  <button class="tab-btn" data-tab="paiements" data-i18n="nav.paiements">Paiements</button>
+  <button class="tab-btn" data-tab="depenses"  data-i18n="nav.depenses">Dépenses</button>
+  <button class="tab-btn" data-tab="stats"     data-i18n="nav.stats">Statistiques</button>
+  <button class="tab-btn" data-tab="moyennes"  data-i18n="nav.moyennes">Moyennes</button>
+  <button class="tab-btn" data-tab="factures"  data-i18n="nav.factures">🧾 Factures</button>
+  <button class="tab-btn" data-tab="bank">🏦 Banque <span style="font-size:.65em;background:#2a4a6b;color:#7eb8f7;border-radius:4px;padding:1px 6px;margin-left:4px;vertical-align:middle">Bientôt</span></button>
+  {% if role == 'admin' %}<button class="tab-btn" data-tab="famille">👨‍👩‍👧 Famille</button>{% endif %}
+</nav>
+
+<!-- ── Contenu des onglets ──────────────────────────────────────────── -->
+<div class="tab-content">
+
+  <!-- REVENUS -->
+  <div id="tab-revenus" class="tab-panel">
+    {% include "partials/revenus.html" %}
+  </div>
+
+  <!-- PAIEMENTS -->
+  <div id="tab-paiements" class="tab-panel">
+    {% include "partials/paiements.html" %}
+  </div>
+
+  <!-- DÉPENSES -->
+  <div id="tab-depenses" class="tab-panel">
+    {% include "partials/depenses.html" %}
+  </div>
+
+  <!-- STATISTIQUES -->
+  <div id="tab-stats" class="tab-panel">
+    {% include "partials/stats.html" %}
+  </div>
+
+  <!-- MOYENNES -->
+  <div id="tab-moyennes" class="tab-panel">
+    {% include "partials/moyennes.html" %}
+  </div>
+
+  <!-- FACTURES OCR -->
+  <div id="tab-factures" class="tab-panel">
+    {% include "partials/ocr.html" %}
+  </div>
+
+  <!-- BANQUE FLINKS -->
+  <div id="tab-bank" class="tab-panel">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4rem 2rem;text-align:center;gap:1rem">
+      <div style="font-size:3rem">🏦</div>
+      <h2 style="margin:0;font-size:1.4rem">Connexion bancaire</h2>
+      <p style="margin:0;color:var(--text-muted,#8899aa);max-width:380px">Cette fonctionnalité sera disponible prochainement. Elle vous permettra de connecter vos comptes bancaires et d'importer vos transactions automatiquement.</p>
+      <span style="background:#2a4a6b;color:#7eb8f7;border-radius:6px;padding:4px 14px;font-size:.85rem;font-weight:600">Bientôt disponible</span>
+    </div>
+  </div>
+
+  <!-- FAMILLE (admin seulement) -->
+  {% if role == 'admin' %}
+  <div id="tab-famille" class="tab-panel">
+    {% include "partials/famille.html" %}
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- ── Modals Paiements ─────────────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-paiement">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modal-pay-title">Paiement</h3>
+      <button class="modal-close" onclick="closeModal('modal-paiement')">✕</button>
+    </div>
+    <form id="pay-form" onsubmit="event.preventDefault(); savePaiement()">
+      <input type="hidden" id="pay-id">
+      <div class="form-group">
+        <label data-i18n="pay.name">Nom</label>
+        <input type="text" id="pay-nom" required maxlength="255" data-i18n-placeholder="form.name_placeholder">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 90px 1fr;gap:1rem">
+        <div class="form-group">
+          <label data-i18n="pay.amount">Montant</label>
+          <input type="number" id="pay-montant" step="0.01" min="0.01" required data-i18n-placeholder="form.amount_placeholder">
+        </div>
+        <div class="form-group">
+          <label>Devise</label>
+          <select id="pay-devise">{% include "partials/devise_options.html" %}</select>
+        </div>
+        <div class="form-group">
+          <label data-i18n="pay.frequency">Fréquence</label>
+          <select id="pay-frequence" required>
+            <option value="mensuel"        data-i18n="pay.freq.mensuel">Mensuel</option>
+            <option value="bihebdomadaire" data-i18n="pay.freq.bihebdo">Aux 2 semaines</option>
+            <option value="hebdomadaire"   data-i18n="pay.freq.hebdo">Hebdomadaire</option>
+            <option value="annuel"         data-i18n="pay.freq.annuel">Annuel</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label data-i18n="pay.next_date">Prochaine échéance</label>
+        <input type="date" id="pay-date" min="2000-01-01" max="2099-12-31">
+      </div>
+
+      <!-- Méthode de paiement -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div class="form-group" style="flex-direction:row;align-items:center;gap:0.5rem">
+          <input type="checkbox" id="pay-auto">
+          <label for="pay-auto">Paiement automatique</label>
+        </div>
+        <div class="form-group" id="pay-methode-group">
+          <label>Média</label>
+          <select id="pay-methode">
+            <option value="">— choisir —</option>
+            <option value="bancaire">🏦 Compte bancaire</option>
+            <option value="carte_credit">💳 Carte de crédit</option>
+            <option value="virement">↗ Virement</option>
+            <option value="cheque">📄 Chèque</option>
+            <option value="especes">💵 Espèces</option>
+            <option value="autre">Autre</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group" id="pay-details-group">
+        <label>Détails (banque, no de carte, etc.)</label>
+        <input type="text" id="pay-methode-details" maxlength="100"
+               placeholder="ex: BNC, Mastercard Canadian Tire *5332">
+      </div>
+
+      <div class="form-group" style="flex-direction:row;align-items:center;gap:0.5rem">
+        <input type="checkbox" id="pay-est-dette">
+        <label for="pay-est-dette" data-i18n="pay.is_debt">C'est une dette</label>
+      </div>
+      <div id="debt-fields" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+          <div class="form-group">
+            <label data-i18n="pay.total_debt">Montant total dette</label>
+            <input type="number" id="pay-total-dette" step="0.01" min="0">
+          </div>
+          <div class="form-group">
+            <label data-i18n="pay.remaining">Restant à payer</label>
+            <input type="number" id="pay-restant" step="0.01" min="0">
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div class="form-group" style="flex-direction:row;align-items:center;gap:0.5rem">
+          <input type="checkbox" id="pay-rappel">
+          <label for="pay-rappel" data-i18n="pay.email_reminder">Rappel email</label>
+        </div>
+        <div class="form-group">
+          <label data-i18n="pay.reminder_days">Jours avant</label>
+          <input type="number" id="pay-rappel-jours" value="3" min="0" max="365">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-paiement')" data-i18n="btn.cancel">Annuler</button>
+        <button type="submit" class="btn btn-primary" data-i18n="btn.save">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal payer une dette -->
+<div class="modal-overlay" id="modal-pay-debt">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title" data-i18n="pay.register_payment">Enregistrer un paiement</h3>
+      <button class="modal-close" onclick="closeModal('modal-pay-debt')">✕</button>
+    </div>
+    <input type="hidden" id="pay-debt-id">
+    <p class="text-muted mb-2" id="pay-debt-nom" style="font-weight:600"></p>
+    <div class="form-group">
+      <label data-i18n="pay.amount_to_pay">Montant à payer</label>
+      <input type="number" id="pay-debt-montant" step="0.01" min="0.01" required>
+    </div>
+    <div class="form-group">
+      <label data-i18n="exp.date">Date</label>
+      <input type="date" id="pay-debt-date" min="2000-01-01" max="2099-12-31">
+    </div>
+    <div class="form-group">
+      <label data-i18n="exp.note">Note</label>
+      <input type="text" id="pay-debt-note" maxlength="500" data-i18n-placeholder="form.note_placeholder">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-pay-debt')" data-i18n="btn.cancel">Annuler</button>
+      <button class="btn btn-success" onclick="confirmPayDebt()" data-i18n="btn.confirm">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modals Dépenses ──────────────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-depense">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modal-exp-title">Dépense</h3>
+      <button class="modal-close" onclick="closeModal('modal-depense')">✕</button>
+    </div>
+    <form id="exp-form" onsubmit="event.preventDefault(); saveDepense()">
+      <input type="hidden" id="exp-id">
+      <div class="form-group">
+        <label data-i18n="exp.name">Libellé</label>
+        <input type="text" id="exp-nom" required maxlength="255" data-i18n-placeholder="form.name_placeholder">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 90px 1fr;gap:1rem">
+        <div class="form-group">
+          <label data-i18n="exp.amount">Montant</label>
+          <input type="number" id="exp-montant" step="0.01" min="0.01" required>
+        </div>
+        <div class="form-group">
+          <label>Devise</label>
+          <select id="exp-devise">{% include "partials/devise_options.html" %}</select>
+        </div>
+        <div class="form-group">
+          <label data-i18n="exp.date">Date</label>
+          <input type="date" id="exp-date" required min="2000-01-01" max="2099-12-31">
+        </div>
+      </div>
+      <div class="form-group">
+        <label data-i18n="exp.category">Catégorie</label>
+        <input type="text" id="exp-categorie" maxlength="100" data-i18n-placeholder="form.category_placeholder">
+      </div>
+      <div class="form-group">
+        <label data-i18n="exp.note">Note</label>
+        <textarea id="exp-note" maxlength="500" data-i18n-placeholder="form.note_placeholder"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-depense')" data-i18n="btn.cancel">Annuler</button>
+        <button type="submit" class="btn btn-primary" data-i18n="btn.save">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── Modal Salaire ───────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-salaire">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modal-sal-title">Revenu</h3>
+      <button class="modal-close" onclick="closeModal('modal-salaire')">✕</button>
+    </div>
+    <form id="sal-form" onsubmit="event.preventDefault(); saveSalaire()">
+      <input type="hidden" id="sal-id">
+      <div class="form-group">
+        <label data-i18n="sal.person">Personne</label>
+        <input type="text" id="sal-personne" required maxlength="255" placeholder="Nom complet">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 90px 1fr;gap:1rem">
+        <div class="form-group">
+          <label data-i18n="sal.net_amount">Salaire net</label>
+          <input type="number" id="sal-montant" step="0.01" min="0.01" required data-i18n-placeholder="form.amount_placeholder">
+        </div>
+        <div class="form-group">
+          <label>Devise</label>
+          <select id="sal-devise">{% include "partials/devise_options.html" %}</select>
+        </div>
+        <div class="form-group">
+          <label data-i18n="sal.frequency">Fréquence</label>
+          <select id="sal-frequence" required>
+            <option value="mensuel"        data-i18n="pay.freq.mensuel">Mensuel</option>
+            <option value="bihebdomadaire" data-i18n="pay.freq.bihebdo">Aux 2 semaines</option>
+            <option value="hebdomadaire"   data-i18n="pay.freq.hebdo">Hebdomadaire</option>
+            <option value="annuel"         data-i18n="pay.freq.annuel">Annuel</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label data-i18n="sal.next_payday">Prochaine paie</label>
+        <input type="date" id="sal-date" min="2000-01-01" max="2099-12-31">
+      </div>
+      <div class="form-group" style="flex-direction:row;align-items:center;gap:0.5rem">
+        <input type="checkbox" id="sal-actif" checked>
+        <label for="sal-actif" data-i18n="sal.active">Actif</label>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-salaire')" data-i18n="btn.cancel">Annuler</button>
+        <button type="submit" class="btn btn-primary" data-i18n="btn.save">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── Modal Budget Catégorie ────────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-budget-cat">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title" data-i18n="budget.cat_modal_title">Budget catégorie</h3>
+      <button class="modal-close" onclick="closeModal('modal-budget-cat')">✕</button>
+    </div>
+    <form id="budget-cat-form" onsubmit="event.preventDefault(); saveBudgetCat()">
+      <input type="hidden" id="budget-cat-id">
+      <div class="form-group">
+        <label data-i18n="exp.category">Catégorie</label>
+        <input type="text" id="budget-cat-nom" required maxlength="100"
+               data-i18n-placeholder="form.category_placeholder">
+      </div>
+      <div class="form-group">
+        <label data-i18n="budget.monthly_limit">Budget mensuel</label>
+        <input type="number" id="budget-cat-montant" step="0.01" min="0.01" required
+               data-i18n-placeholder="form.amount_placeholder">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-budget-cat')"
+                data-i18n="btn.cancel">Annuler</button>
+        <button type="submit" class="btn btn-primary" data-i18n="btn.save">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── Footer ───────────────────────────────────────────────────────── -->
+<footer class="footer">
+  <a href="https://nexiostf.com" target="_blank" rel="noopener">Produit par Technologies Nexios TF Inc.</a>
+  &nbsp;·&nbsp;
+  <a href="/cgu">CGU</a>
+  &nbsp;·&nbsp;
+  <a href="/confidentialite">Confidentialité</a>
+  &nbsp;·&nbsp;
+  <a href="/abonnement" data-i18n="nav.abonnement">Abonnement</a>
+</footer>
+
+<!-- ── Widget Andy (chat flottant) ───────────────────────────────── -->
+<div id="andy-widget">
+  <!-- Bouton flottant -->
+  <button id="andy-fab" onclick="andyToggle()" title="Andy — Assistant IA" aria-label="Ouvrir Andy">
+    <img src="/static/img/andyHead.png" alt="Andy" id="andy-fab-img"
+         style="width:2.25rem;height:2.25rem;object-fit:cover;border-radius:50%">
+  </button>
+
+  <!-- Panneau de chat -->
+  <div id="andy-panel" style="display:none" role="dialog" aria-label="Chat Andy">
+    <div id="andy-header">
+      <div style="display:flex;align-items:center;gap:0.5rem">
+        <img src="/static/img/andyHead.png" alt="Andy"
+             style="width:1.75rem;height:1.75rem;object-fit:cover;border-radius:50%">
+        <span>Andy</span>
+        <span style="font-size:0.7rem;opacity:0.7;font-weight:400">Assistant FinanceFamille</span>
+      </div>
+      <div style="display:flex;gap:0.4rem;align-items:center">
+        <button onclick="andyClearHistory()" title="Effacer l'historique"
+                style="background:none;border:none;color:inherit;cursor:pointer;font-size:0.85rem;opacity:0.65"
+                id="andy-btn-clear">🗑</button>
+        <button onclick="andyDisable()" title="Désactiver Andy"
+                style="background:none;border:none;color:inherit;cursor:pointer;font-size:0.85rem;opacity:0.65"
+                id="andy-btn-disable">🔕</button>
+        <button onclick="andyToggle()"
+                style="background:none;border:none;color:inherit;cursor:pointer;font-size:1.05rem">✕</button>
+      </div>
+    </div>
+    <!-- Contenu dynamique : disclaimer / chat / désactivé -->
+    <div id="andy-body"></div>
+  </div>
+</div>
+
+<!-- ── Modal 2FA TOTP ────────────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-totp">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <h3 class="modal-title">🔐 Authentification à deux facteurs</h3>
+      <button class="modal-close" onclick="closeModal('modal-totp')">✕</button>
+    </div>
+    <div id="totp-modal-body">
+      <p class="text-muted" style="font-size:0.875rem">Chargement...</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal Paramètres devise ───────────────────────────────────── -->
+<div class="modal-overlay" id="modal-currency">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header">
+      <h3 class="modal-title">💱 Devise</h3>
+      <button class="modal-close" onclick="closeModal('modal-currency')">✕</button>
+    </div>
+    <p class="text-muted" style="font-size:0.875rem;margin-bottom:1rem">
+      Choisissez votre devise d'affichage. Ce paramètre est personnel — il ne modifie pas les données des autres membres.
+    </p>
+    <div class="form-group">
+      <label>Devise</label>
+      <select id="cur-devise" onchange="updateCurrencySymbol(this.value)">
+        <option value="CAD">CAD — Dollar canadien ($)</option>
+        <option value="USD">USD — Dollar américain ($)</option>
+        <option value="EUR">EUR — Euro (€)</option>
+        <option value="GBP">GBP — Livre sterling (£)</option>
+        <option value="CHF">CHF — Franc suisse (CHF)</option>
+        <option value="AUD">AUD — Dollar australien ($)</option>
+        <option value="NZD">NZD — Dollar néo-zélandais ($)</option>
+        <option value="JPY">JPY — Yen japonais (¥)</option>
+        <option value="CNY">CNY — Yuan chinois (¥)</option>
+        <option value="HKD">HKD — Dollar de Hong Kong ($)</option>
+        <option value="SGD">SGD — Dollar de Singapour ($)</option>
+        <option value="BRL">BRL — Réal brésilien (R$)</option>
+        <option value="MXN">MXN — Peso mexicain ($)</option>
+        <option value="INR">INR — Roupie indienne (₹)</option>
+        <option value="SEK">SEK — Couronne suédoise (kr)</option>
+        <option value="NOK">NOK — Couronne norvégienne (kr)</option>
+        <option value="DKK">DKK — Couronne danoise (kr)</option>
+        <option value="PLN">PLN — Zloty polonais (zł)</option>
+        <option value="CZK">CZK — Couronne tchèque (Kč)</option>
+        <option value="HUF">HUF — Forint hongrois (Ft)</option>
+        <option value="RON">RON — Leu roumain (lei)</option>
+        <option value="TRY">TRY — Livre turque (₺)</option>
+        <option value="AED">AED — Dirham des ÉAU (د.إ)</option>
+        <option value="ZAR">ZAR — Rand sud-africain (R)</option>
+        <option value="KRW">KRW — Won coréen (₩)</option>
+        <option value="MAD">MAD — Dirham marocain (MAD)</option>
+        <option value="DZD">DZD — Dinar algérien (DA)</option>
+        <option value="TND">TND — Dinar tunisien (DT)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Symbole</label>
+      <input type="text" id="cur-symbole" maxlength="5" style="width:80px"
+             placeholder="$">
+      <p class="text-muted" style="font-size:0.8rem;margin-top:0.25rem">
+        Modifiable si votre devise n'est pas listée ou pour personnaliser.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-ghost" onclick="closeModal('modal-currency')">Annuler</button>
+      <button type="button" class="btn btn-primary" onclick="saveCurrencySettings()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal Suppression de compte (Loi 25 art. 9 / RGPD art. 17 — droit à l'effacement) ── -->
+<div class="modal-overlay" id="modal-delete-account">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <h3 class="modal-title">🗑️ Supprimer mon compte</h3>
+      <button class="modal-close" onclick="closeModal('modal-delete-account')">✕</button>
+    </div>
+    <div style="background:rgba(220,38,38,0.08);border:1px solid #dc2626;border-radius:8px;padding:0.85rem 1rem;margin-bottom:1.25rem">
+      <strong style="color:#dc2626">⚠️ Action définitive et irréversible</strong>
+      <p style="margin:0.4rem 0 0;font-size:0.85rem">
+        {% if role == 'admin' %}
+        Toutes les données du compte familial — membres, revenus, paiements, dépenses,
+        connexions bancaires, factures, historique — seront effacées définitivement pour
+        tout le monde. Aucune restauration ne sera possible ensuite.
+        {% else %}
+        Votre profil et toutes les données qui vous appartiennent seront effacés
+        définitivement. Le compte familial restera actif pour les autres membres.
+        Aucune restauration ne sera possible ensuite.
+        {% endif %}
+      </p>
+    </div>
+    <div class="form-group">
+      <label>Mot de passe actuel</label>
+      <input type="password" id="del-password" autocomplete="current-password">
+    </div>
+    {% if totp_actif %}
+    <div class="form-group">
+      <label>Code de vérification à deux facteurs</label>
+      <input type="text" id="del-totp" inputmode="numeric" maxlength="6" placeholder="123456"
+             style="font-size:1.3rem;letter-spacing:0.3rem;text-align:center;width:100%">
+    </div>
+    {% endif %}
+    <div class="form-group">
+      <label>Tapez <strong>SUPPRIMER</strong> pour confirmer</label>
+      <input type="text" id="del-confirmation" autocomplete="off" placeholder="SUPPRIMER">
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-ghost" onclick="closeModal('modal-delete-account')">Annuler</button>
+      <button type="button" class="btn btn-danger" onclick="deleteAccountConfirm()">🗑️ Supprimer définitivement</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Devise courante de l'utilisateur (injectée par Jinja2)
+window._currency       = "{{ currency }}";
+window._currencySymbol = "{{ currency_symbol }}";
+
+// Map devise → symbole par défaut
+const _CURRENCY_SYMBOLS = {
+  CAD:"$", USD:"$", EUR:"€", GBP:"£", CHF:"CHF", AUD:"$", NZD:"$",
+  JPY:"¥", CNY:"¥", HKD:"$", SGD:"$", BRL:"R$", MXN:"$", INR:"₹",
+  SEK:"kr", NOK:"kr", DKK:"kr", PLN:"zł", CZK:"Kč", HUF:"Ft",
+  RON:"lei", TRY:"₺", AED:"د.إ", ZAR:"R", KRW:"₩",
+  MAD:"MAD", DZD:"DA", TND:"DT",
+};
+
+function updateCurrencySymbol(code) {
+  const sym = _CURRENCY_SYMBOLS[code] || code;
+  document.getElementById('cur-symbole').value = sym;
+}
+
+function openCurrencySettings() {
+  document.getElementById('cur-devise').value  = window._currency || 'CAD';
+  document.getElementById('cur-symbole').value = window._currencySymbol || '$';
+  document.getElementById('modal-currency').classList.add('active');
+}
+
+async function saveCurrencySettings() {
+  const devise  = document.getElementById('cur-devise').value.trim();
+  const symbole = document.getElementById('cur-symbole').value.trim();
+  if (!devise || !symbole) return;
+  try {
+    const r = await fetch('/api/user/settings', {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ devise, symbole_devise: symbole }),
+    });
+    if (r.ok) {
+      window._currency       = devise;
+      window._currencySymbol = symbole;
+      window.currencySymbol  = symbole;
+      closeModal('modal-currency');
+      loadSummary();
+      loadSalaires();
+      loadPaiements();
+      loadDepenses();
+    } else {
+      const e = await r.json();
+      alert(e.detail || 'Erreur lors de la sauvegarde.');
+    }
+  } catch(e) { alert('Erreur réseau.'); }
+}
+
+// ── 2FA TOTP ────────────────────────────────────────────────────────────────
+
+async function openTotpSettings() {
+  document.getElementById('totp-modal-body').innerHTML = '<p class="text-muted" style="font-size:0.875rem">Chargement...</p>';
+  document.getElementById('modal-totp').classList.add('active');
+  try {
+    const d = await fetch('/api/user/totp').then(r => r.json());
+    if (d.totp_actif) {
+      document.getElementById('totp-modal-body').innerHTML = `
+        <div style="background:rgba(16,185,129,0.1);border:1px solid #10b981;border-radius:8px;padding:1rem;margin-bottom:1.25rem">
+          <strong style="color:#10b981">✅ 2FA est activé</strong>
+          <p style="margin:0.5rem 0 0;font-size:0.9rem">Votre compte est protégé par une application TOTP.</p>
+        </div>
+        <div class="form-group">
+          <label>Code TOTP pour confirmer la désactivation</label>
+          <input type="text" id="totp-disable-code" inputmode="numeric" maxlength="6" placeholder="123456"
+                 style="font-size:1.3rem;letter-spacing:0.3rem;text-align:center;width:100%">
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" onclick="closeModal('modal-totp')">Annuler</button>
+          <button class="btn btn-danger" onclick="totpDisable()">🚫 Désactiver le 2FA</button>
+        </div>`;
+    } else {
+      const qrHtml = d.qr_b64
+        ? `<div style="text-align:center;margin:1rem 0"><img src="data:image/png;base64,${d.qr_b64}" alt="QR Code TOTP" style="max-width:180px;border-radius:8px"></div>`
+        : '';
+      document.getElementById('totp-modal-body').innerHTML = `
+        <p style="font-size:0.875rem;margin-bottom:0.75rem">
+          <strong>Étape 1 :</strong> Scannez ce QR avec Google Authenticator, Authy ou Bitwarden.
+        </p>
+        ${qrHtml}
+        <details style="margin-bottom:1rem">
+          <summary style="cursor:pointer;font-size:0.83rem;opacity:0.7">Afficher la clé manuelle</summary>
+          <code style="display:block;padding:0.5rem;background:var(--bg-secondary);border-radius:4px;font-size:0.8rem;word-break:break-all;margin-top:0.5rem">${d.totp_secret}</code>
+        </details>
+        <p style="font-size:0.875rem;margin-bottom:0.75rem">
+          <strong>Étape 2 :</strong> Entrez le code à 6 chiffres pour confirmer.
+        </p>
+        <div class="form-group">
+          <input type="text" id="totp-confirm-code" inputmode="numeric" maxlength="6" placeholder="123456"
+                 style="font-size:1.3rem;letter-spacing:0.3rem;text-align:center;width:100%">
+          <input type="hidden" id="totp-secret-val" value="${d.totp_secret}">
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" onclick="closeModal('modal-totp')">Annuler</button>
+          <button class="btn btn-primary" onclick="totpEnable()">✅ Activer le 2FA</button>
+        </div>`;
+    }
+  } catch(e) {
+    document.getElementById('totp-modal-body').innerHTML = '<p class="text-muted">Erreur de chargement.</p>';
+  }
+}
+
+async function totpEnable() {
+  const code   = document.getElementById('totp-confirm-code')?.value.trim();
+  const secret = document.getElementById('totp-secret-val')?.value;
+  if (!code || code.length !== 6) { alert('Entrez un code à 6 chiffres.'); return; }
+  try {
+    const r = await fetch('/api/user/totp/confirm', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ totp_secret: secret, code }),
+    });
+    const d = await r.json();
+    if (r.ok) {
+      closeModal('modal-totp');
+      document.getElementById('totp-banner')?.remove();
+      alert('✅ 2FA activé avec succès !');
+    } else { alert(d.detail || 'Erreur.'); }
+  } catch(e) { alert('Erreur réseau.'); }
+}
+
+async function totpDisable() {
+  const code = document.getElementById('totp-disable-code')?.value.trim();
+  if (!code || code.length !== 6) { alert('Entrez un code à 6 chiffres.'); return; }
+  try {
+    const r = await fetch('/api/user/totp/disable', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ code }),
+    });
+    const d = await r.json();
+    if (r.ok) { closeModal('modal-totp'); alert('2FA désactivé.'); }
+    else { alert(d.detail || 'Code invalide.'); }
+  } catch(e) { alert('Erreur réseau.'); }
+}
+
+// ── Suppression de compte (Loi 25 art. 9 / RGPD art. 17 — droit à l'effacement) ─────────────
+
+function openDeleteAccountModal() {
+  document.getElementById('del-password').value = '';
+  document.getElementById('del-confirmation').value = '';
+  const totpEl = document.getElementById('del-totp');
+  if (totpEl) totpEl.value = '';
+  openModal('modal-delete-account');
+}
+
+async function deleteAccountConfirm() {
+  const password     = document.getElementById('del-password')?.value || '';
+  const totpEl       = document.getElementById('del-totp');
+  const totp_code    = totpEl ? totpEl.value.trim() : '';
+  const confirmation = document.getElementById('del-confirmation')?.value.trim() || '';
+
+  if (!password) { alert('Entrez votre mot de passe actuel.'); return; }
+  if (totpEl && totp_code.length !== 6) { alert('Entrez votre code de vérification à deux facteurs (6 chiffres).'); return; }
+  if (confirmation.toUpperCase() !== 'SUPPRIMER') { alert('Veuillez taper SUPPRIMER pour confirmer.'); return; }
+  if (!confirm('Dernière confirmation : voulez-vous vraiment supprimer définitivement votre compte et toutes les données associées ? Cette action est irréversible.')) return;
+
+  try {
+    const r = await fetch('/api/user/delete-account', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ password, totp_code: totp_code || null, confirmation }),
+    });
+    if (r.ok) {
+      const d = await r.json();
+      alert(d.message || 'Votre compte a été supprimé définitivement.');
+      window.location.href = '/login';
+    } else {
+      const d = await r.json().catch(() => ({}));
+      alert(d.detail || 'Erreur lors de la suppression du compte.');
+    }
+  } catch(e) { alert('Erreur réseau.'); }
+}
+
+// Déclencher la mise à jour du symbole quand on change la devise
+document.addEventListener('DOMContentLoaded', function() {
+  const sel = document.getElementById('cur-devise');
+  if (sel) sel.addEventListener('change', function() { updateCurrencySymbol(this.value); });
+
+  // Afficher/masquer les champs méthode de paiement selon "automatique"
+  const chkAuto = document.getElementById('pay-auto');
+  if (chkAuto) {
+    chkAuto.addEventListener('change', function() {
+      const show = this.checked;
+      document.getElementById('pay-methode-group').style.opacity = show ? '1' : '0.5';
+    });
+  }
+});
+</script>
+<script src="/static/js/main.js"></script>
+<script src="/static/js/ocr.js"></script>
+<script src="/static/js/andy.js"></script>
+{% endblock %}

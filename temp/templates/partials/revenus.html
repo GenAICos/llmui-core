@@ -1,0 +1,35 @@
+<!-- ── Onglet Revenus ──────────────────────────────────────────────────── -->
+<div class="section-header">
+  <h2 class="section-title" data-i18n="nav.revenus">Revenus</h2>
+  <button class="btn btn-primary btn-sm" onclick="openAddSalaire()">
+    + <span data-i18n="btn.add">Ajouter</span>
+  </button>
+</div>
+
+<!-- Tableau des salaires -->
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th data-i18n="sal.person">Personne</th>
+          <th data-i18n="sal.net_amount">Salaire net</th>
+          <th data-i18n="sal.frequency">Fréquence</th>
+          <th data-i18n="sal.monthly_equiv">Équiv. mensuel</th>
+          <th data-i18n="sal.next_payday">Prochaine paie</th>
+          <th data-i18n="sal.active">Actif</th>
+          <th data-i18n="pay.actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="sal-tbody">
+        <tr><td colspan="7" class="text-center text-muted" style="padding:2rem">Chargement...</td></tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="2" style="padding:0.75rem 1rem;font-weight:700" data-i18n="sal.total_monthly">Total mensuel</td>
+          <td colspan="5" style="padding:0.75rem 1rem;font-weight:800;font-size:1.05rem" class="text-green" id="sal-total">—</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>

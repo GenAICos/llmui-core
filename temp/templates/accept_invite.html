@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="invite.title">Accepter l'invitation — {{ app_name }}</title>
+  <link rel="icon" type="image/x-icon" href="/static/icons/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/icons/favicon-16x16.png">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script>(function(){var t=localStorage.getItem("financefamille_theme")||"dark";document.documentElement.setAttribute("data-theme",t);})();</script>
+</head>
+<body>
+<div class="login-page">
+  <div class="login-box" style="max-width:440px">
+
+    {% include "partials/lang_switcher.html" %}
+
+    <div class="login-logo">
+      <h1>{{ app_name }}</h1>
+      <p data-i18n="invite.subtitle">Rejoindre une famille</p>
+    </div>
+
+    {% if error and not invitation %}
+    <!-- Invitation invalide — afficher seulement l'erreur -->
+    <div class="alert alert-error">{{ error }}</div>
+    <p class="text-muted" style="font-size:0.88rem;margin-top:0.75rem;text-align:center" data-i18n="invite.error_body">
+      Ce lien d'invitation est invalide ou a expiré.
+      Demandez à l'administrateur de la famille de vous envoyer une nouvelle invitation.
+    </p>
+    <div style="text-align:center;margin-top:1.25rem">
+      <a href="/login" class="btn btn-ghost" data-i18n="invite.back_login">Se connecter</a>
+    </div>
+
+    {% else %}
+
+    <!-- Informations sur l'invitation -->
+    {% if invitation %}
+    <div style="background:linear-gradient(135deg,rgba(16,185,129,0.12),rgba(59,130,246,0.10));
+                border:1px solid var(--accent-green);border-radius:8px;
+                padding:0.85rem 1rem;margin-bottom:1.25rem;font-size:0.9rem">
+      <div style="margin-bottom:0.4rem">
+        <span class="text-muted" data-i18n="invite.family_label">Famille :</span>
+        <strong>{{ invitation.nom_famille }}</strong>
+      </div>
+      <div style="margin-bottom:0.4rem">
+        <span class="text-muted" data-i18n="invite.email_label">Courriel :</span>
+        <strong>{{ invitation.email }}</strong>
+      </div>
+      <div>
+        <span class="text-muted" data-i18n="invite.role_label">Rôle :</span>
+        <span class="badge badge-{% if invitation.role == 'admin' %}amber{% else %}blue{% endif %}">
+          {{ invitation.role }}
+        </span>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <p class="text-muted" style="font-size:0.88rem;margin-bottom:1rem" data-i18n="invite.instructions">
+      Choisissez un nom d'utilisateur et un mot de passe pour rejoindre la famille.
+    </p>
+
+    <form method="POST" action="/invite/{{ token }}" autocomplete="off" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="token" value="{{ token }}">
+
+      <div class="form-group">
+        <label for="username" data-i18n="invite.username">Nom d'utilisateur</label>
+        <input type="text" id="username" name="username"
+               value="{{ username or '' }}"
+               placeholder="mon_prenom"
+               pattern="[a-zA-Z0-9_\-]+" minlength="3" maxlength="50" required autofocus
+               autocomplete="username">
+        <small class="text-muted" style="font-size:0.75rem" data-i18n="invite.username_hint">
+          Lettres, chiffres, - et _ uniquement (3–50 caractères)
+        </small>
+      </div>
+
+      <div class="form-group">
+        <label for="password" data-i18n="invite.password">Mot de passe</label>
+        <input type="password" id="password" name="password"
+               placeholder="••••••••"
+               minlength="8" required
+               autocomplete="new-password">
+        <small class="text-muted" style="font-size:0.75rem" data-i18n="invite.password_hint">
+          Minimum 8 caractères
+        </small>
+      </div>
+
+      <div class="form-group">
+        <label for="password2" data-i18n="invite.password2">Confirmer le mot de passe</label>
+        <input type="password" id="password2" name="password2"
+               placeholder="••••••••"
+               minlength="8" required
+               autocomplete="new-password">
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width:100%;margin-top:0.75rem;padding:0.85rem;font-size:1rem"
+              data-i18n="invite.submit">
+        Rejoindre la famille
+      </button>
+    </form>
+
+    <div style="text-align:center;margin-top:1.25rem;font-size:0.88rem">
+      <span class="text-muted" data-i18n="invite.have_account">Vous avez déjà un compte ?</span>
+      <a href="/login" data-i18n="invite.login_link">Se connecter</a>
+    </div>
+
+    {% endif %}
+
+    <div class="footer" style="margin-top:1.5rem;border:none">
+      <a href="https://nexiostf.com" target="_blank" rel="noopener">Technologies Nexios TF Inc.</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  const form = document.querySelector("form");
+  if (form) {
+    form.addEventListener("submit", function(e) {
+      const p1 = document.getElementById("password").value;
+      const p2 = document.getElementById("password2").value;
+      if (p1 !== p2) {
+        e.preventDefault();
+        alert("Les mots de passe ne correspondent pas.");
+        document.getElementById("password2").focus();
+      }
+    });
+  }
+</script>
+<script src="/static/js/i18n.js"></script>
+</body>
+</html>

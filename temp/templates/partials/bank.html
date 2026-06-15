@@ -1,0 +1,374 @@
+<!-- Section Connexion bancaire Flinks -->
+<div class="section-header">
+  <h2 class="section-title">🏦 Comptes bancaires</h2>
+  <button class="btn btn-primary btn-sm" onclick="bankConnect()">
+    + Connecter une banque
+  </button>
+</div>
+
+<!-- Message de consentement -->
+<div class="card" id="bank-consent-info" style="background:var(--info-bg,#eff6ff);border-left:4px solid var(--primary,#2563EB);margin-bottom:1rem">
+  <p style="margin:0;font-size:0.9rem;color:var(--text-muted)">
+    🔒 <strong>Connexion sécurisée via Flinks.</strong>
+    Vos identifiants bancaires ne sont jamais stockés sur nos serveurs.
+    FinanceFamille reçoit uniquement un accès en lecture seule à vos transactions.
+    Vous pouvez révoquer cet accès à tout moment.
+  </p>
+</div>
+
+<!-- Liste des connexions bancaires -->
+<div id="bank-connections-list">
+  <div class="text-center text-muted" style="padding:2rem">Chargement des connexions...</div>
+</div>
+
+<!-- Filtres transactions -->
+<div id="bank-txn-section" style="display:none;margin-top:1.5rem">
+  <div class="section-header" style="margin-top:0">
+    <h3 style="margin:0;font-size:1.1rem;font-weight:700">Transactions importées</h3>
+  </div>
+
+  <div class="filter-bar" style="flex-wrap:wrap;gap:0.5rem">
+    <select id="bank-filter-account" style="width:auto;min-width:180px" onchange="bankLoadTxns()">
+      <option value="">Tous les comptes</option>
+    </select>
+    <input type="date" id="bank-filter-from" style="width:auto" onchange="bankLoadTxns()" placeholder="Du">
+    <input type="date" id="bank-filter-to"   style="width:auto" onchange="bankLoadTxns()" placeholder="Au">
+    <select id="bank-filter-cat" style="width:auto;min-width:140px" onchange="bankLoadTxns()">
+      <option value="">Toutes catégories</option>
+      <option value="Alimentation">Alimentation</option>
+      <option value="Transport">Transport</option>
+      <option value="Logement">Logement</option>
+      <option value="Loisirs">Loisirs</option>
+      <option value="Santé">Santé</option>
+      <option value="Revenus">Revenus</option>
+      <option value="Épargne">Épargne</option>
+      <option value="Autre">Autre</option>
+    </select>
+    <input type="search" id="bank-filter-search" style="width:auto;min-width:160px" placeholder="Rechercher..." oninput="bankLoadTxnsDebounced()">
+  </div>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Description</th>
+            <th>Compte</th>
+            <th>Catégorie</th>
+            <th class="text-right">Montant</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="bank-txn-tbody">
+          <tr><td colspan="6" class="text-center text-muted" style="padding:2rem">Sélectionnez une connexion pour voir les transactions.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- Pagination -->
+    <div id="bank-txn-pagination" style="display:flex;gap:0.5rem;justify-content:center;padding:0.75rem;flex-wrap:wrap"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  // ---- State ----
+  let _bankPage      = 1;
+  let _bankTxnTimer  = null;
+  let _bankConnected = false;
+
+  // ---- Connect ----
+  window.bankConnect = async function() {
+    try {
+      const r = await fetch('/api/bank/connect');
+      if (!r.ok) { const e = await r.json(); alert(e.detail || 'Erreur connexion'); return; }
+      const d = await r.json();
+      // Ouvrir le widget Flinks dans un popup
+      const w = 600, h = 700;
+      const l = Math.round((screen.width  - w) / 2);
+      const t = Math.round((screen.height - h) / 2);
+      const popup = window.open(d.connect_url, 'flinks_connect',
+        `width=${w},height=${h},left=${l},top=${t},resizable=yes,scrollbars=yes`);
+      // Écouter le message de retour du popup
+      const handler = function(ev) {
+        if (ev.data && ev.data.type === 'flinks_callback') {
+          window.removeEventListener('message', handler);
+          if (popup && !popup.closed) popup.close();
+          bankLoadConnections();
+        }
+      };
+      window.addEventListener('message', handler);
+      // Fallback : vérifier si le popup s'est fermé
+      const timer = setInterval(() => {
+        if (popup && popup.closed) {
+          clearInterval(timer);
+          window.removeEventListener('message', handler);
+          bankLoadConnections();
+        }
+      }, 1000);
+    } catch(e) { alert('Erreur: ' + e.message); }
+  };
+
+  // ---- Load Connections ----
+  window.bankLoadConnections = async function() {
+    const container = document.getElementById('bank-connections-list');
+    try {
+      const r = await fetch('/api/bank/connections');
+      if (!r.ok) { container.innerHTML = '<p class="text-muted">Erreur de chargement.</p>'; return; }
+      const connections = await r.json();
+
+      if (!connections.length) {
+        container.innerHTML = '<p class="text-muted" style="padding:1rem 0">Aucune banque connectée. Cliquez sur « Connecter une banque » pour commencer.</p>';
+        document.getElementById('bank-txn-section').style.display = 'none';
+        return;
+      }
+
+      // Mettre à jour le filtre par compte
+      const sel = document.getElementById('bank-filter-account');
+      const prevVal = sel.value;
+      sel.innerHTML = '<option value="">Tous les comptes</option>';
+      connections.forEach(conn => {
+        if (conn.accounts) {
+          conn.accounts.forEach(acc => {
+            const opt = document.createElement('option');
+            opt.value = acc.id;
+            opt.textContent = `${conn.institution_name} — ${acc.account_type} ${acc.account_number_masked || ''}`;
+            sel.appendChild(opt);
+          });
+        }
+      });
+      if (prevVal) sel.value = prevVal;
+
+      container.innerHTML = connections.map(conn => renderConnection(conn)).join('');
+      document.getElementById('bank-txn-section').style.display = '';
+      _bankConnected = true;
+      bankLoadTxns();
+    } catch(e) { container.innerHTML = '<p class="text-muted">Erreur réseau.</p>'; }
+  };
+
+  function renderConnection(conn) {
+    const statusBadge = {
+      'active':  '<span class="badge badge-success">Actif</span>',
+      'expired': '<span class="badge badge-warning">Expiré — reconnexion requise</span>',
+      'revoked': '<span class="badge badge-danger">Révoqué</span>',
+    }[conn.status] || conn.status;
+
+    const lastSync = conn.last_synced_at
+      ? new Date(conn.last_synced_at).toLocaleString('fr-CA', {dateStyle:'short',timeStyle:'short'})
+      : 'Jamais';
+
+    const accounts = (conn.accounts || []).map(acc =>
+      `<div style="padding:0.25rem 0;font-size:0.875rem;color:var(--text-muted)">
+        ${acc.account_type || 'Compte'} ${acc.account_number_masked || ''} —
+        Solde : <strong>${formatMoney(acc.balance_current)}</strong>
+        ${acc.balance_available != null ? ` / Disponible : ${formatMoney(acc.balance_available)}` : ''}
+      </div>`
+    ).join('');
+
+    const syncBtn = conn.status === 'active'
+      ? `<button class="btn btn-ghost btn-sm" onclick="bankSync(${conn.id})">🔄 Synchroniser</button>
+         <button class="btn btn-ghost btn-sm" onclick="bankRefresh(${conn.id})">⚡ Soldes</button>`
+      : (conn.status === 'expired'
+          ? `<button class="btn btn-primary btn-sm" onclick="bankConnect()">🔑 Reconnecter</button>`
+          : '');
+
+    return `<div class="card" style="margin-bottom:1rem" id="bank-conn-${conn.id}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.5rem">
+        <div>
+          <strong style="font-size:1rem">${escHtml(conn.institution_name || 'Banque')}</strong>
+          ${statusBadge}
+          <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.25rem">
+            Dernière sync : ${lastSync}
+          </div>
+        </div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+          ${syncBtn}
+          <button class="btn btn-danger btn-sm" onclick="bankDisconnect(${conn.id})">🗑 Déconnecter</button>
+        </div>
+      </div>
+      <div style="margin-top:0.75rem">${accounts}</div>
+    </div>`;
+  }
+
+  // ---- Sync ----
+  window.bankSync = async function(id) {
+    const btn = document.querySelector(`#bank-conn-${id} button[onclick*="bankSync"]`);
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Synchronisation...'; }
+    try {
+      const r = await fetch(`/api/bank/sync/${id}`, { method:'POST',
+        headers: {'X-CSRF-Token': document.querySelector('meta[name=csrf-token]')?.content || ''} });
+      const d = await r.json();
+      if (r.ok) {
+        showToast(`✅ ${d.transactions_added || 0} nouvelle(s) transaction(s) importée(s).`, 'success');
+        bankLoadConnections();
+      } else {
+        showToast('❌ ' + (d.detail || 'Erreur sync'), 'error');
+        if (btn) { btn.disabled = false; btn.textContent = '🔄 Synchroniser'; }
+      }
+    } catch(e) {
+      showToast('❌ Erreur réseau', 'error');
+      if (btn) { btn.disabled = false; btn.textContent = '🔄 Synchroniser'; }
+    }
+  };
+
+  window.bankRefresh = async function(id) {
+    try {
+      const r = await fetch(`/api/bank/refresh-balances/${id}`, { method:'POST',
+        headers: {'X-CSRF-Token': document.querySelector('meta[name=csrf-token]')?.content || ''} });
+      if (r.ok) { showToast('✅ Soldes mis à jour.', 'success'); bankLoadConnections(); }
+      else { const d = await r.json(); showToast('❌ ' + (d.detail || 'Erreur'), 'error'); }
+    } catch(e) { showToast('❌ Erreur réseau', 'error'); }
+  };
+
+  window.bankDisconnect = async function(id) {
+    if (!confirm('Déconnecter cette banque ? L\'historique des transactions sera conservé, mais les synchronisations futures seront désactivées.')) return;
+    try {
+      const r = await fetch(`/api/bank/disconnect/${id}`, { method:'DELETE',
+        headers: {'X-CSRF-Token': document.querySelector('meta[name=csrf-token]')?.content || ''} });
+      if (r.ok) { showToast('✅ Banque déconnectée.', 'success'); bankLoadConnections(); }
+      else { const d = await r.json(); showToast('❌ ' + (d.detail || 'Erreur'), 'error'); }
+    } catch(e) { showToast('❌ Erreur réseau', 'error'); }
+  };
+
+  // ---- Transactions ----
+  window.bankLoadTxns = async function(page) {
+    if (!_bankConnected) return;
+    _bankPage = page || 1;
+    const params = new URLSearchParams({ page: _bankPage, per_page: 25 });
+    const accountId = document.getElementById('bank-filter-account')?.value;
+    const dateFrom  = document.getElementById('bank-filter-from')?.value;
+    const dateTo    = document.getElementById('bank-filter-to')?.value;
+    const cat       = document.getElementById('bank-filter-cat')?.value;
+    const search    = document.getElementById('bank-filter-search')?.value;
+    if (accountId) params.set('account_id', accountId);
+    if (dateFrom)  params.set('date_from', dateFrom);
+    if (dateTo)    params.set('date_to', dateTo);
+    if (cat)       params.set('category', cat);
+    if (search)    params.set('search', search);
+
+    const tbody = document.getElementById('bank-txn-tbody');
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Chargement...</td></tr>';
+
+    try {
+      const r = await fetch(`/api/bank/transactions?${params}`);
+      if (!r.ok) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Erreur de chargement.</td></tr>'; return; }
+      const d = await r.json();
+      renderTxns(d.transactions, d.total, d.page, d.total_pages);
+    } catch(e) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Erreur réseau.</td></tr>'; }
+  };
+
+  window.bankLoadTxnsDebounced = function() {
+    clearTimeout(_bankTxnTimer);
+    _bankTxnTimer = setTimeout(() => bankLoadTxns(1), 350);
+  };
+
+  const CATS = ['Alimentation','Transport','Logement','Loisirs','Santé','Revenus','Épargne','Autre'];
+
+  function renderTxns(txns, total, page, totalPages) {
+    const tbody = document.getElementById('bank-txn-tbody');
+    if (!txns || !txns.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted" style="padding:2rem">Aucune transaction trouvée.</td></tr>';
+      document.getElementById('bank-txn-pagination').innerHTML = '';
+      return;
+    }
+
+    tbody.innerHTML = txns.map(t => {
+      const montant = t.amount;
+      const cls = montant < 0 ? 'color:#ef4444' : 'color:#22c55e';
+      const catDisplay = t.category_custom || t.category || '—';
+      const catSel = CATS.map(c =>
+        `<option value="${c}" ${c === (t.category_custom || t.category) ? 'selected' : ''}>${c}</option>`
+      ).join('');
+      return `<tr>
+        <td style="white-space:nowrap">${t.date}</td>
+        <td title="${escHtml(t.description_raw || '')}">${escHtml(t.description_clean || t.description_raw || '—')}</td>
+        <td style="font-size:0.8rem;color:var(--text-muted)">${escHtml(t.account_number_masked || t.account_id || '')}</td>
+        <td>
+          <select class="input-sm" style="font-size:0.8rem;padding:0.15rem 0.3rem"
+                  onchange="bankUpdateCat(${t.id}, this.value)">
+            <option value="" ${!t.category_custom && !t.category ? 'selected' : ''}>—</option>
+            ${catSel}
+          </select>
+        </td>
+        <td class="text-right" style="${cls};font-weight:600;white-space:nowrap">
+          ${montant >= 0 ? '+' : ''}${formatMoney(montant)}
+        </td>
+        <td></td>
+      </tr>`;
+    }).join('');
+
+    // Pagination
+    const pag = document.getElementById('bank-txn-pagination');
+    pag.innerHTML = '';
+    if (totalPages > 1) {
+      const mkBtn = (label, p, disabled) => {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-ghost btn-sm';
+        btn.textContent = label;
+        btn.disabled = disabled;
+        if (!disabled) btn.onclick = () => bankLoadTxns(p);
+        return btn;
+      };
+      pag.appendChild(mkBtn('←', page - 1, page <= 1));
+      const info = document.createElement('span');
+      info.style.cssText = 'align-self:center;font-size:0.85rem;color:var(--text-muted)';
+      info.textContent = `Page ${page} / ${totalPages} (${total} transactions)`;
+      pag.appendChild(info);
+      pag.appendChild(mkBtn('→', page + 1, page >= totalPages));
+    }
+  }
+
+  window.bankUpdateCat = async function(txnId, cat) {
+    try {
+      await fetch(`/api/bank/transactions/${txnId}/category`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name=csrf-token]')?.content || ''
+        },
+        body: JSON.stringify({ category: cat || null }),
+      });
+    } catch(e) { console.error('Erreur update catégorie', e); }
+  };
+
+  // ---- Helpers ----
+  function formatMoney(v) {
+    if (v == null) return '—';
+    return new Intl.NumberFormat('fr-CA', { style:'currency', currency: window._currency || 'CAD' }).format(v);
+  }
+
+  function escHtml(s) {
+    if (!s) return '';
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function showToast(msg, type) {
+    // Utiliser le système de toast existant si disponible, sinon fallback
+    if (window.showNotification) { window.showNotification(msg, type); return; }
+    const d = document.createElement('div');
+    d.style.cssText = 'position:fixed;bottom:1rem;right:1rem;padding:0.75rem 1.25rem;border-radius:0.5rem;z-index:9999;font-size:0.9rem;' +
+      (type === 'success' ? 'background:#22c55e;color:#fff' : 'background:#ef4444;color:#fff');
+    d.textContent = msg;
+    document.body.appendChild(d);
+    setTimeout(() => d.remove(), 4000);
+  }
+
+  // Charger au premier affichage de l'onglet
+  document.addEventListener('DOMContentLoaded', function() {
+    // Observer quand l'onglet banque devient visible
+    const tabBank = document.getElementById('tab-bank');
+    if (tabBank) {
+      const obs = new MutationObserver(function(mutations) {
+        mutations.forEach(function(m) {
+          if (m.type === 'attributes' && m.attributeName === 'style') {
+            if (tabBank.style.display !== 'none' && !_bankConnected) {
+              bankLoadConnections();
+            }
+          }
+        });
+      });
+      obs.observe(tabBank, { attributes: true });
+    }
+  });
+})();
+</script>
