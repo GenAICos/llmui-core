@@ -12,6 +12,7 @@ from typing import AsyncGenerator, Optional
 
 from sqlalchemy import (
     Boolean,
+    DateTime,
     ForeignKey,
     Index,
     Integer,
@@ -44,8 +45,10 @@ class User(Base):
     lang: Mapped[str] = mapped_column(String(10), server_default="fr")
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
     is_admin: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    last_login_at: Mapped[Optional[datetime]]
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
     totp: Mapped[Optional["UserTOTP"]] = relationship(
         back_populates="user", uselist=False, cascade="all, delete-orphan"
@@ -66,9 +69,9 @@ class UserTOTP(Base):
     )
     secret_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
-    activated_at: Mapped[Optional[datetime]]
+    activated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     recovery_codes: Mapped[Optional[list]] = mapped_column(JSONB)
-    last_used_at: Mapped[Optional[datetime]]
+    last_used_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
     user: Mapped["User"] = relationship(back_populates="totp")
 
@@ -83,7 +86,9 @@ class AuditLog(Base):
     ip_address: Mapped[Optional[str]] = mapped_column(INET)
     user_agent: Mapped[Optional[str]] = mapped_column(Text)
     details: Mapped[Optional[dict]] = mapped_column(JSONB)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
     __table_args__ = (
         Index("idx_audit_log_user_id", "user_id"),
@@ -99,8 +104,10 @@ class SupportConversation(Base):
     session_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), nullable=False, server_default=text("uuid_generate_v4()")
     )
-    started_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    ended_at: Mapped[Optional[datetime]]
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    ended_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     status: Mapped[str] = mapped_column(String(20), server_default="active")
     messages: Mapped[list] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))
 
@@ -117,8 +124,12 @@ class AndyKnowledge(Base):
     lang: Mapped[str] = mapped_column(String(10), server_default="fr")
     version: Mapped[int] = mapped_column(Integer, server_default=text("1"))
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
     __table_args__ = (
         Index("idx_andy_knowledge_category", "category"),
@@ -141,7 +152,9 @@ class Conversation(Base):
     merger_model: Mapped[Optional[str]] = mapped_column(String(200))
     processing_time: Mapped[Optional[float]]
     mode: Mapped[str] = mapped_column(String(20), server_default="simple")
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
     __table_args__ = (
         Index("idx_conversations_session", "session_id"),
@@ -159,7 +172,9 @@ class Message(Base):
     )
     role: Mapped[str] = mapped_column(String(20), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
     __table_args__ = (Index("idx_messages_session_created", "session_id", "created_at"),)
 
@@ -175,7 +190,9 @@ class SystemConfig(Base):
     label: Mapped[Optional[str]] = mapped_column(String(200))
     description: Mapped[Optional[str]] = mapped_column(Text)
     is_sensitive: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
     updated_by: Mapped[Optional[int]]
 
     __table_args__ = (
