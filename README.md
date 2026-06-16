@@ -1,5 +1,7 @@
 # LLMUI Core v1.0.0
 
+> **Langue / Language:** 🇫🇷 Français | [🇬🇧 English](README.en.md) | [🇪🇸 Español](README.es.md) | [🇩🇪 Deutsch](README.de.md) | [🇵🇹 Português](README.pt.md) | [🇸🇦 العربية](README.ar.md)
+
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104%2B-009688.svg)](https://fastapi.tiangolo.com)
 [![Ollama](https://img.shields.io/badge/Ollama-local-black.svg)](https://ollama.com)
