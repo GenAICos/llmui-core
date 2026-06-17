@@ -9,17 +9,17 @@
 # ============================================================================
 
 # WEB / API (FastAPI — STANDARDS.md §3)
-fastapi==0.109.2
-uvicorn[standard]==0.24.0
-starlette==0.36.3
-python-multipart==0.0.7
+fastapi==0.137.1
+uvicorn[standard]==0.49.0
+starlette==1.3.1
+python-multipart==0.0.32
 itsdangerous==2.1.2          # Signature des cookies de session (SessionMiddleware)
 
 # HTTP — appels vers Ollama local
 httpx==0.25.2
 
 # VALIDATION
-pydantic==2.8.2
+pydantic==2.13.4
 
 # DATE / FUSEAU HORAIRE
 pytz==2024.1
@@ -37,9 +37,9 @@ argon2-cffi==23.1.0
 passlib[argon2]==1.7.4
 pyotp==2.9.0                 # TOTP (RFC 6238)
 qrcode==7.4.2                # QR code TOTP en SVG (sans Pillow — enrôlement par scan)
-cryptography==42.0.4         # Fernet — chiffrement des secrets TOTP au repos
+cryptography==49.0.0         # Fernet — chiffrement des secrets TOTP au repos
 
 # OUTILLAGE & TESTS (STANDARDS.md §10 — ruff ; §11 — pytest)
 ruff==0.6.9
-pytest==7.4.3
-pytest-asyncio==0.21.1
+pytest==9.1.0
+pytest-asyncio==1.4.0
